@@ -1,0 +1,95 @@
+{
+  "project_info": {
+    "project_number": "536559144445",
+    "project_id": "app-music-12345tn",
+    "storage_bucket": "app-music-12345tn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:536559144445:android:74d20f0fcf7e81fb331d94",
+        "android_client_info": {
+          "package_name": "com.company.appmusic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdqMvUJf0Qhr2vthYdFX50-92MwWS35eM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:536559144445:android:820aa2cfe47cfece331d94",
+        "android_client_info": {
+          "package_name": "com.example.musicapp.cocktail_learning"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdqMvUJf0Qhr2vthYdFX50-92MwWS35eM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:536559144445:android:34267b27e49d62e6331d94",
+        "android_client_info": {
+          "package_name": "com.example.musicapp.musicapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdqMvUJf0Qhr2vthYdFX50-92MwWS35eM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:536559144445:android:3807c68c8f422271331d94",
+        "android_client_info": {
+          "package_name": "com.example.nongdanonlinev2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "536559144445-m8gubqud891bfvvq94l1pfhogab4r191.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nongdanonlinev2",
+            "certificate_hash": "d2e39c60449c3255995484452c26b8ef05890ceb"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdqMvUJf0Qhr2vthYdFX50-92MwWS35eM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
