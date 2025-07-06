@@ -1,5 +1,6 @@
-import 'package:farmrole/modules/home/screens/Chat_Screen.dart';
-import 'package:farmrole/modules/home/screens/MyFarm_Screen.dart';
+import 'package:farmrole/modules/home/screens/chat/Chat_Screen.dart';
+import 'package:farmrole/modules/home/screens/personal/farmManager/MyFarm_Screen.dart';
+import 'package:farmrole/modules/home/screens/personal/farmManager/Register_Step1_Farm.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
@@ -7,14 +8,14 @@ import 'package:farmrole/modules/home/widgets/AppDrawer.dart';
 import 'package:farmrole/modules/home/widgets/Welcome_Card.dart';
 import 'package:farmrole/modules/home/widgets/DashBoard_Card.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class ManagerFarmer extends StatefulWidget {
+  const ManagerFarmer({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<ManagerFarmer> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<ManagerFarmer> {
   int _currentIndex = 0;
 
   final List<Map<String, dynamic>> dashboardItems = [
@@ -33,7 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
       "image": "lib/assets/image/AddFarm.png",
       "title": "Đăng kí Farm",
       "subtitle": "Đăng kí Farm mới",
-      "onTap": (BuildContext context) {},
+      "onTap": (BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RegisterStep1Farm()),
+        );
+      },
     },
     {
       "image": "lib/assets/image/CustomerFarm.png",
@@ -57,25 +63,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-
     final List<Widget> tabs = [
       _buildHomeTab(context, theme, user.fullName),
       const ChatScreen(),
     ];
-
     return Scaffold(
       drawer: const AppDrawer(),
       backgroundColor: theme.colorScheme.background,
       body: IndexedStack(index: _currentIndex, children: tabs),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        selectedItemColor: theme.colorScheme.primary,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-        ],
-      ),
     );
   }
 
@@ -128,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
               WelcomeCard(),
               const SizedBox(height: 6),
               const Text(
-                'Online',
+                'Đã đến với trang trại',
                 style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],

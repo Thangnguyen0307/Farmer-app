@@ -1,4 +1,4 @@
-import 'package:farmrole/modules/home/screens/Profile_Edit_Screen.dart';
+import 'package:farmrole/modules/home/screens/personal/canhan/Profile_Edit_Screen.dart';
 import 'package:farmrole/modules/home/widgets/FarmerDivider.dart';
 import 'package:farmrole/modules/home/widgets/InfoPanel.dart';
 import 'package:flutter/material.dart';

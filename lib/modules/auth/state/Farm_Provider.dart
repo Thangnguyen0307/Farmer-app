@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:farmrole/shared/types/Farm_Model.dart';
+import 'package:flutter/material.dart';
 
 class FarmProvider extends ChangeNotifier {
   List<FarmModel> _farms = [];

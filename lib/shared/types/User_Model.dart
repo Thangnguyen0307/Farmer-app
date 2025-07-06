@@ -74,4 +74,6 @@ class UserModel {
       'refreshToken': refreshToken,
     };
   }
+
+  bool get isFarmer => roles.contains('Farmer');
 }

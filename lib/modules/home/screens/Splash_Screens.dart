@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen>
           final newUser = profile.copyWith(token: tempUser.token);
           if (!mounted) return;
           context.read<UserProvider>().setUser(newUser);
-          context.go('/home');
+          context.go('/');
         } catch (e) {
           debugPrint("Access token hết hạn, đang thử refresh...");
           if (refreshToken == null) throw Exception("Không có refresh token");
@@ -73,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen>
             'user',
             jsonEncode({...newUser.toJson(), 'refreshToken': refreshToken}),
           );
-          context.go('/home');
+          context.go('/');
         }
       } catch (e) {
         debugPrint("Token lỗi hoặc không thể refresh: $e");

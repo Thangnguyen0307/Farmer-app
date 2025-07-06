@@ -1,3 +1,4 @@
+import 'package:farmrole/modules/home/screens/personal/farmManager/Question_Step2_Screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:farmrole/modules/auth/services/CRUD_Farm_Service.dart';
@@ -37,10 +38,14 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
         ),
       );
     }
+
+    String showOrFallback(String? value) {
+      return (value == null || value.isEmpty) ? 'Chưa cập nhật' : value;
+    }
+
     final selectedFarm = farms[selectedIndex];
     return Scaffold(
       backgroundColor: Colors.white,
-
       appBar: AppBar(
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
@@ -92,7 +97,6 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
                             itemBuilder: (context, index) {
                               final farm = farms[index];
                               final isSelected = index == selectedIndex;
-
                               return GestureDetector(
                                 onTap:
                                     () => setState(() => selectedIndex = index),
@@ -146,8 +150,6 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
-
           Expanded(
             child: Container(
               width: double.infinity,
@@ -170,7 +172,6 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tiêu đề farm
                     Text(
                       selectedFarm.name,
                       style: const TextStyle(
@@ -181,8 +182,6 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Danh sách ảnh
                     SizedBox(
                       height: 160,
                       child: ListView.builder(
@@ -211,67 +210,59 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
                         },
                       ),
                     ),
-
                     const SizedBox(height: 24),
 
-                    // Thông tin farm
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on,
-                          color: Colors.green.shade600,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "Địa chỉ: ${selectedFarm.location}",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
+                    _buildInfoRow(
+                      Icons.location_on,
+                      "Địa chỉ: ${showOrFallback(selectedFarm.location)}",
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.square_foot,
-                          color: Colors.green.shade600,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Diện tích: ${selectedFarm.area} m²',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    _buildInfoRow(
+                      Icons.square_foot,
+                      selectedFarm.area > 0
+                          ? 'Diện tích: ${selectedFarm.area} m²'
+                          : 'Diện tích: Chưa cập nhật',
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.attach_money,
-                          color: Colors.green.shade600,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Giá: ${selectedFarm.pricePerMonth} VNĐ/tháng',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    _buildInfoRow(
+                      Icons.check_circle,
+                      selectedFarm.isAvailable
+                          ? 'Trạng thái: Có sẵn'
+                          : 'Trạng thái: Không có sẵn',
+                    ),
+                    _buildInfoRow(
+                      Icons.bar_chart,
+                      'Tình trạng: ${showOrFallback(selectedFarm.status)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.star,
+                      'Đánh giá: ${selectedFarm.ratings} (${selectedFarm.reviewCount} lượt)',
+                    ),
+                    _buildInfoRow(
+                      Icons.phone,
+                      'Điện thoại: ${showOrFallback(selectedFarm.phone)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.chat,
+                      'Zalo: ${showOrFallback(selectedFarm.zalo)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.access_time,
+                      'Giờ hoạt động: ${showOrFallback(selectedFarm.operationTime)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.place,
+                      'Tỉnh/TP: ${showOrFallback(selectedFarm.province)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.place,
+                      'Quận/Huyện: ${showOrFallback(selectedFarm.district)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.place,
+                      'Phường/Xã: ${showOrFallback(selectedFarm.ward)}',
+                    ),
+                    _buildInfoRow(
+                      Icons.place,
+                      'Đường: ${showOrFallback(selectedFarm.street)}',
                     ),
 
                     const SizedBox(height: 24),
@@ -281,40 +272,141 @@ class _MyFarmScreenState extends State<MyFarmScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
-                      children: [
-                        ...selectedFarm.services.map(
-                          (s) => Chip(
-                            label: Text(s),
-                            backgroundColor: Colors.green.shade50,
-                            labelStyle: TextStyle(
-                              color: Colors.green.shade800,
-                              fontWeight: FontWeight.w500,
+                      children:
+                          selectedFarm.services
+                              .map(
+                                (s) => Chip(
+                                  label: Text(s),
+                                  backgroundColor: Colors.green.shade50,
+                                  labelStyle: TextStyle(
+                                    color: Colors.green.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  side: BorderSide(
+                                    color: Colors.green.shade300,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Tính năng:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children:
+                          selectedFarm.features
+                              .map(
+                                (f) => Chip(
+                                  label: Text(f),
+                                  backgroundColor: Colors.blue.shade50,
+                                  labelStyle: TextStyle(
+                                    color: Colors.blue.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  side: BorderSide(color: Colors.blue.shade300),
+                                ),
+                              )
+                              .toList(),
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Tags:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children:
+                          selectedFarm.tags
+                              .map(
+                                (t) => Chip(
+                                  label: Text(t),
+                                  backgroundColor: Colors.orange.shade50,
+                                  labelStyle: TextStyle(
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  side: BorderSide(
+                                    color: Colors.orange.shade300,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+
+                    const SizedBox(height: 24),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final farmId = selectedFarm.id;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => QuestionStep2Screen(farmId: farmId),
                             ),
-                            side: BorderSide(color: Colors.green.shade300),
+                          );
+                        },
+                        icon: const Icon(Icons.assignment),
+                        label: const Text("Làm khảo sát cho farm này"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        ...selectedFarm.tags.map(
-                          (t) => Chip(
-                            label: Text(t),
-                            backgroundColor: Colors.orange.shade50,
-                            labelStyle: TextStyle(
-                              color: Colors.orange.shade800,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            side: BorderSide(color: Colors.orange.shade300),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.green.shade600, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),

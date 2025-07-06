@@ -60,6 +60,7 @@ class AuthService {
           "email": email,
           "password": password,
           "fullName": fullName,
+          "role": "Customer",
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

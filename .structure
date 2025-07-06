@@ -16,9 +16,15 @@ lib/
 │   │
 │   ├── home/
 │   │   ├── screens/             # Các màn hình 
-│   │   │   └── home_screen.dart       # Trang chính sau khi login
+│   │   │   └── home        #các man hình trong trang home
+|   |   |   |__ community   #các man hình trong trang community
+|   |   |   |__ chat        #các man hình trong trang chat 
+|   |   |   |__ personal    #các man hình trong trang personal
+|   |   |   |   └──profile
+|   |   |   |   |__ManagerFarm
 │   │   └── widgets/        # Các widget tái sử dụng
 │   │       └── welcome_card.dart    # Hiện thông tin user
+|   |   |__ Splash_Screen.dart #màn hình chờ load user
 │
 ├── shared/
 │   ├── constants.dart               # Các giá trị dùng chung
