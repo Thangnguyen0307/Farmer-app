@@ -59,7 +59,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
-  /// Trả về widget bài viết (không dùng Card nữa)
   Widget _buildPostItem(PostModel post) {
     return Container(
       color: Colors.white,
@@ -67,7 +66,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: avatar + tên + thời gian
           Row(
             children: [
               if (post.author.avatar?.isNotEmpty == true)
@@ -100,8 +98,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ],
           ),
           const SizedBox(height: 8),
-
-          // Tiêu đề và nội dung
           Text(
             post.title,
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
@@ -149,8 +145,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-
-    // Main list với separator line 3px xám
     return Scaffold(
       appBar: AppBar(title: const Text('Cộng đồng')),
       body: RefreshIndicator(

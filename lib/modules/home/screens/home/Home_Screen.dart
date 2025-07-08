@@ -116,16 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 140,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-
-                      // 1. Hiệu ứng “lò xo” khi kéo
                       physics: const BouncingScrollPhysics(),
-
-                      // 2. Padding hai đầu thẩm mỹ
                       padding: const EdgeInsets.symmetric(horizontal: 8),
-
-                      // 3. Cache trước một vài item để render nhanh
                       cacheExtent: 300,
-
                       itemCount: videos.length,
                       itemBuilder: (ctx, i) {
                         final v = videos[i];
@@ -136,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             youtubeLink: v.youtubeLink,
                             title: v.title,
                             onTap: () {
-                              // Lưu state và chuyển sang Reels
                               context.read<VideoProvider>().setVideos(
                                 videos,
                                 i,

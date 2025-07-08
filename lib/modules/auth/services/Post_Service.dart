@@ -57,7 +57,6 @@ class PostService {
     int page = 1,
     int limit = 10,
   }) async {
-    // Lấy token từ Provider
     final token = context.read<UserProvider>().user?.token;
     if (token == null) {
       throw Exception('Không có token xác thực');
@@ -67,12 +66,10 @@ class PostService {
       queryParameters: {'page': page.toString(), 'limit': limit.toString()},
     );
 
-    // Gửi request kèm header
     final resp = await http.get(
       uri,
       headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
     );
-    // Debug log
     debugPrint('GET $uri → ${resp.statusCode}');
     debugPrint('Response body: ${resp.body}');
     if (resp.statusCode == 204) {
@@ -109,24 +106,19 @@ class PostService {
   }) async {
     final user = context.read<UserProvider>().user;
     final token = user?.token;
-
     if (token == null || token.isEmpty) {
       throw Exception("Token không hợp lệ");
     }
-
     final uri = Uri.parse(
       '$_baseUrl/post-feed',
     ).replace(queryParameters: {'page': '$page', 'limit': '$limit'});
-
     final resp = await http.get(
       uri,
       headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
     );
-
     if (resp.statusCode != 200) {
       throw Exception('Lỗi lấy danh sách bài viết: ${resp.body}');
     }
-
     final jsonData = jsonDecode(resp.body);
     final posts =
         (jsonData['data'] as List).map((e) => PostModel.fromJson(e)).toList();
@@ -157,7 +149,6 @@ class PostService {
       ..headers['Authorization'] = 'Bearer $token';
     request.fields['title'] = postData['title']?.toString() ?? '';
     request.fields['description'] = postData['description']?.toString() ?? '';
-    // API nhận tags là chuỗi; nếu bạn muốn gửi nhiều tags, có thể join bằng dấu phẩy
     final tags = postData['tags'];
     if (tags is List<String>) {
       request.fields['tags'] = tags.join(',');
