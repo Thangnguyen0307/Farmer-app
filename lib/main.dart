@@ -5,6 +5,7 @@ import 'package:farmrole/app/theme.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/state/Farm_Provider.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/auth/state/Video_Provider.dart';
 import 'package:farmrole/shared/types/User_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -29,6 +30,7 @@ void main() async {
           create: (_) => UserProvider()..setUser(initialUser),
         ),
         ChangeNotifierProvider(create: (_) => FarmProvider()),
+        ChangeNotifierProvider(create: (_) => VideoProvider()),
       ],
       child: const MyApp(),
     ),

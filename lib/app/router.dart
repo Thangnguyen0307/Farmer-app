@@ -1,10 +1,14 @@
 import 'package:farmrole/modules/auth/screens/Login_Screen.dart';
 import 'package:farmrole/modules/auth/screens/Register_Screen.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/auth/state/Video_Provider.dart';
 import 'package:farmrole/modules/home/screens/community/Community_Screen.dart';
 import 'package:farmrole/modules/home/screens/community/Create_Post_Screen.dart';
+import 'package:farmrole/modules/home/screens/home/FullScreen_Video_Page.dart';
+import 'package:farmrole/modules/home/screens/home/Search_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/Home_Screen.dart';
 import 'package:farmrole/modules/home/screens/chat/Notifi_Screen.dart';
+import 'package:farmrole/modules/home/screens/home/ReelsPageViewScreen.dart';
 import 'package:farmrole/modules/home/screens/personal/canhan/Outside_personal.dart';
 import 'package:farmrole/modules/home/screens/personal/canhan/Profile_Screen.dart';
 import 'package:farmrole/modules/home/screens/Splash_Screens.dart';
@@ -55,6 +59,15 @@ final router = GoRouter(
     GoRoute(
       path: '/manager',
       builder: (context, state) => const ManagerFarmer(),
+    ),
+    GoRoute(
+      path: '/reels',
+      builder: (context, state) {
+        final provider = context.watch<VideoProvider>();
+        return YoutubeVideoScreen(
+          youtubeUrl: provider.videos[provider.initialIndex].youtubeLink,
+        );
+      },
     ),
   ],
 );
