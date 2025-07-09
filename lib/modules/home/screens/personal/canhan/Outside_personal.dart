@@ -1,8 +1,9 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
-import 'package:farmrole/modules/home/widgets/Post_Tile.dart';
+import 'package:farmrole/modules/home/widgets/Post/Post_Tile.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
+import 'package:farmrole/shared/types/Video_Model.dart' as video_model;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -19,9 +20,9 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
   final _scrollCtrl = ScrollController();
   List<PostModel> _posts = [];
   Pagination? _pagination;
-  List<Map<String, dynamic>> _videos = [];
+  List<video_model.VideoModel> _videos = [];
   bool _loading = false, _hasError = false, _showPosts = true;
-
+  video_model.Pagination? _videoPagination;
   @override
   void initState() {
     super.initState();
@@ -71,9 +72,13 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
       _loading = true;
       _hasError = false;
     });
+
     try {
       final r = await _service.fetchLatestVideos(context: context, page: 1);
-      _videos = r?['data'] ?? [];
+      if (r != null) {
+        _videos = r.videos;
+        _videoPagination = r.pagination;
+      }
     } catch (_) {
       _hasError = true;
     } finally {
@@ -118,7 +123,6 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
         controller: _scrollCtrl,
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // AppBar snap/float/pinned
           SliverAppBar(
             pinned: true,
             floating: true,
@@ -134,7 +138,6 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
             ],
           ),
 
-          // Profile header (avatar left, text right)
           SliverToBoxAdapter(
             child: Container(
               color: Colors.white,
@@ -162,14 +165,6 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
                             color: Colors.grey.shade600,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Bài viết: ${_pagination?.total ?? _posts.length}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -182,7 +177,7 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
             child: Container(height: 3, color: Colors.grey.shade300),
           ),
 
-          // Tab header pinned
+          // Tab post + video
           SliverPersistentHeader(
             pinned: true,
             delegate: _SliverTabDelegate(
@@ -200,6 +195,8 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
                   _loadVideos();
                 });
               },
+              pagination: _pagination,
+              posts: _posts,
             ),
           ),
 
@@ -237,8 +234,7 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
                 final v = _videos[i];
                 return ListTile(
                   leading: const Icon(Icons.play_circle_fill),
-                  title: Text(v['title'] ?? ''),
-                  subtitle: Text(v['description'] ?? ''),
+                  title: Text(v.title),
                 );
               }, childCount: _videos.length),
             ),
@@ -260,12 +256,16 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final bool showPosts;
   final VoidCallback onTapPosts, onTapVideos;
+  final Pagination? pagination;
+  final List<PostModel> posts;
 
   _SliverTabDelegate({
     required this.height,
     required this.showPosts,
     required this.onTapPosts,
     required this.onTapVideos,
+    required this.pagination,
+    required this.posts,
   });
 
   @override
@@ -280,6 +280,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final primary = Theme.of(context).colorScheme.primary;
+    final totalPosts = pagination?.total ?? posts.length;
     return Container(
       color: Colors.white,
       child: Row(
@@ -291,7 +292,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Bài viết',
+                    'Bài viết: $totalPosts',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -339,6 +340,8 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _SliverTabDelegate old) {
-    return old.showPosts != showPosts;
+    return old.showPosts != showPosts ||
+        old.pagination != pagination ||
+        old.posts.length != posts.length;
   }
 }

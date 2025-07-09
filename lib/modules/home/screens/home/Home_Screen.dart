@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/shared/types/Video_Model.dart';
 import 'package:farmrole/modules/home/widgets/Video_Item.dart';
-import 'package:farmrole/modules/home/screens/home/Search_Screen.dart';
+import 'package:farmrole/modules/home/screens/community/Search_Post_Screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -26,12 +26,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> loadVideos() async {
     final res = await PostService().fetchLatestVideos(context: context);
-    if (res != null && res['videos'] != null) {
+    if (res != null && res.videos != null) {
       setState(() {
-        videos =
-            (res['videos'] as List)
-                .map((e) => VideoModel.fromJson(e as Map<String, dynamic>))
-                .toList();
+        videos = res.videos;
+
         isLoading = false;
       });
     } else {
@@ -92,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const SearchScreen(),
+                            builder: (_) => const SearchPostScreen(),
                           ),
                         );
                       },
@@ -110,35 +108,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text(
                     'Video mới nhất',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 140,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      cacheExtent: 300,
-                      itemCount: videos.length,
-                      itemBuilder: (ctx, i) {
-                        final v = videos[i];
-                        return Container(
-                          width: 200,
-                          margin: const EdgeInsets.only(right: 12),
-                          child: VideoItem(
-                            youtubeLink: v.youtubeLink,
-                            title: v.title,
-                            onTap: () {
-                              context.read<VideoProvider>().setVideos(
-                                videos,
-                                i,
-                              );
-                              context.push('/reels');
-                            },
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),

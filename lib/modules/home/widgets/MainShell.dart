@@ -6,10 +6,30 @@ class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.child});
 
   static final List<_TabInfo> _tabs = [
-    _TabInfo(path: '/home', icon: Icons.home, label: 'Trang chủ'),
-    _TabInfo(path: '/community', icon: Icons.public, label: 'Cộng đồng'),
-    _TabInfo(path: '/noti', icon: Icons.chat, label: 'Thông báo'),
-    _TabInfo(path: '/Outside', icon: Icons.person, label: 'Cá nhân'),
+    _TabInfo(
+      path: '/home',
+      iconPath: 'lib/assets/icon/home_White.png',
+      activeIconPath: 'lib/assets/icon/home.png',
+      label: 'Trang chủ',
+    ),
+    _TabInfo(
+      path: '/community',
+      iconPath: 'lib/assets/icon/community_White.png',
+      activeIconPath: 'lib/assets/icon/community.png',
+      label: 'Cộng đồng',
+    ),
+    _TabInfo(
+      path: '/chat',
+      iconPath: 'lib/assets/icon/chat_White.png',
+      activeIconPath: 'lib/assets/icon/chat.png',
+      label: 'Thông báo',
+    ),
+    _TabInfo(
+      path: '/Outside',
+      iconPath: 'lib/assets/icon/personal_White.png',
+      activeIconPath: 'lib/assets/icon/personal.png',
+      label: 'Cá nhân',
+    ),
   ];
 
   int _currentIndex(BuildContext context) {
@@ -47,7 +67,7 @@ class MainShell extends StatelessWidget {
       ),
 
       bottomNavigationBar: SizedBox(
-        height: 60,
+        height: 80,
         child: ClipRRect(
           child: BottomAppBar(
             shape: const CircularNotchedRectangle(),
@@ -71,15 +91,29 @@ class MainShell extends StatelessWidget {
   Widget _navBtn(BuildContext ctx, int idx, int currentIdx) {
     final tab = _tabs[idx];
     final selected = idx == currentIdx;
-    final color = selected ? Colors.white : Colors.white70;
 
     return InkWell(
-      onTap: () => ctx.go(tab.path),
+      onTap: () {
+        if (tab.path == '/community') {
+          ctx.push('/community');
+        } else {
+          ctx.go(tab.path);
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        child: Center(child: Icon(tab.icon, color: color, size: 28)),
+        child: Center(
+          child: SizedBox(
+            height: 50, // hoặc thử tăng lên 48, 50
+            width: 50,
+            child: Image.asset(
+              selected ? tab.activeIconPath : tab.iconPath,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -87,7 +121,14 @@ class MainShell extends StatelessWidget {
 
 class _TabInfo {
   final String path;
-  final IconData icon;
+  final String iconPath;
+  final String activeIconPath;
   final String label;
-  const _TabInfo({required this.path, required this.icon, required this.label});
+
+  const _TabInfo({
+    required this.path,
+    required this.iconPath,
+    required this.activeIconPath,
+    required this.label,
+  });
 }

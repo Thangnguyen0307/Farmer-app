@@ -5,7 +5,7 @@ import 'package:farmrole/modules/auth/state/Video_Provider.dart';
 import 'package:farmrole/modules/home/screens/community/Community_Screen.dart';
 import 'package:farmrole/modules/home/screens/community/Create_Post_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/FullScreen_Video_Page.dart';
-import 'package:farmrole/modules/home/screens/home/Search_Screen.dart';
+import 'package:farmrole/modules/home/screens/community/Search_Post_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/Home_Screen.dart';
 import 'package:farmrole/modules/home/screens/chat/Notifi_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/ReelsPageViewScreen.dart';
@@ -14,6 +14,7 @@ import 'package:farmrole/modules/home/screens/personal/canhan/Profile_Screen.dar
 import 'package:farmrole/modules/home/screens/Splash_Screens.dart';
 import 'package:farmrole/modules/home/screens/personal/canhan/Setting.dart';
 import 'package:farmrole/modules/home/screens/personal/farmManager/Manager_Farmer.dart';
+import 'package:farmrole/modules/home/widgets/Post/Comment_Screen.dart';
 import 'package:farmrole/modules/home/widgets/MainShell.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -39,10 +40,7 @@ final router = GoRouter(
       builder: (context, state, child) => MainShell(child: child),
       routes: [
         GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-        GoRoute(
-          path: '/community',
-          builder: (_, __) => const CommunityScreen(),
-        ),
+
         GoRoute(path: '/noti', builder: (_, __) => const NotifiScreen()),
         GoRoute(
           path: '/Outside',
@@ -50,11 +48,16 @@ final router = GoRouter(
         ),
       ],
     ),
+    GoRoute(path: '/community', builder: (_, __) => const CommunityScreen()),
     GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
     GoRoute(path: '/setting', builder: (_, __) => const Setting()),
     GoRoute(
       path: '/create',
       builder: (context, state) => const CreatePostScreen(),
+    ),
+    GoRoute(
+      path: '/search',
+      builder: (context, state) => const SearchPostScreen(),
     ),
     GoRoute(
       path: '/manager',
@@ -64,9 +67,17 @@ final router = GoRouter(
       path: '/reels',
       builder: (context, state) {
         final provider = context.watch<VideoProvider>();
-        return YoutubeVideoScreen(
-          youtubeUrl: provider.videos[provider.initialIndex].youtubeLink,
+        return ReelsScreen(
+          videos: provider.videos,
+          initialIndex: provider.initialIndex,
         );
+      },
+    ),
+    GoRoute(
+      path: '/comments/:postId',
+      builder: (context, state) {
+        final postId = state.pathParameters['postId']!;
+        return CommentScreen(postId: postId);
       },
     ),
   ],

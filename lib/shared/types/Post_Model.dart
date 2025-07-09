@@ -6,11 +6,13 @@ class PostModel {
   final List<String> tags;
   final List<String> images;
   final int like;
+  final int commentCount;
   final AuthorModel author;
   final bool status;
   final String note;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool yourLike;
 
   PostModel({
     required this.id,
@@ -19,11 +21,13 @@ class PostModel {
     required this.tags,
     required this.images,
     required this.like,
+    required this.commentCount,
     required this.author,
     required this.status,
     required this.note,
     required this.createdAt,
     required this.updatedAt,
+    required this.yourLike,
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
@@ -34,11 +38,13 @@ class PostModel {
       tags: List<String>.from(json['tags'] ?? []),
       images: List<String>.from(json['images'] ?? []),
       like: json['like'] ?? 0,
+      commentCount: json['commentCount'] ?? 0,
       author: AuthorModel.fromJson(json['authorId']),
       status: json['status'] ?? false,
       note: json['note'] ?? '',
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
+      yourLike: json['yourLike'] ?? false,
     );
   }
 }

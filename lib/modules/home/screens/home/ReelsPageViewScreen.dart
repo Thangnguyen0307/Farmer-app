@@ -1,92 +1,104 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:video_player/video_player.dart';
+import 'package:farmrole/shared/types/Video_Model.dart';
 
-class YoutubeVideoScreen extends StatefulWidget {
-  final String youtubeUrl;
+class ReelsScreen extends StatefulWidget {
+  final List<VideoModel> videos;
+  final int initialIndex;
 
-  const YoutubeVideoScreen({Key? key, required this.youtubeUrl})
-    : super(key: key);
+  const ReelsScreen({
+    Key? key,
+    required this.videos,
+    required this.initialIndex,
+  }) : super(key: key);
 
   @override
-  State<YoutubeVideoScreen> createState() => _YoutubeVideoScreenState();
+  State<ReelsScreen> createState() => _ReelsScreenState();
 }
 
-class _YoutubeVideoScreenState extends State<YoutubeVideoScreen> {
-  late YoutubePlayerController _controller;
+class _ReelsScreenState extends State<ReelsScreen> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: _currentIndex);
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.videos.length,
+        scrollDirection: Axis.vertical,
+        onPageChanged: (i) => setState(() => _currentIndex = i),
+        itemBuilder: (context, index) {
+          final video = widget.videos[index];
+          return _ReelVideoPlayer(
+            videoUrl: video.youtubeLink,
+          ); // tên cũ nhưng là mp4
+        },
+      ),
+    );
+  }
+}
+
+class _ReelVideoPlayer extends StatefulWidget {
+  final String videoUrl;
+
+  const _ReelVideoPlayer({required this.videoUrl});
+
+  @override
+  State<_ReelVideoPlayer> createState() => _ReelVideoPlayerState();
+}
+
+class _ReelVideoPlayerState extends State<_ReelVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-
-    final videoId = YoutubePlayer.convertUrlToId(widget.youtubeUrl);
-    if (videoId == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Link YouTube không hợp lệ")),
-        );
-        Navigator.pop(context);
+    _controller = VideoPlayerController.network(widget.videoUrl)
+      ..initialize().then((_) {
+        setState(() => isInitialized = true);
+        _controller.play();
+        _controller.setLooping(true);
       });
-      return;
-    }
-
-    _controller = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-        controlsVisibleAtStart: true,
-        forceHD: true,
-      ),
-    );
-
-    // Không lock orientation để tránh lỗi tự xoay
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
 
   @override
   void dispose() {
-    _controller.pause();
     _controller.dispose();
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return YoutubePlayerBuilder(
-      player: YoutubePlayer(
-        controller: _controller,
-        showVideoProgressIndicator: true,
-        progressColors: const ProgressBarColors(
-          playedColor: Colors.redAccent,
-          handleColor: Colors.red,
-        ),
-      ),
-      builder: (context, player) {
-        return Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            children: [
-              Center(child: AspectRatio(aspectRatio: 16 / 9, child: player)),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 12,
-                left: 12,
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
+    return isInitialized
+        ? Stack(
+          fit: StackFit.expand,
+          children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
               ),
-            ],
-          ),
-        );
-      },
-    );
+            ),
+            // thêm overlay UI nếu cần
+            const Positioned(
+              bottom: 20,
+              left: 20,
+              child: Icon(Icons.favorite, color: Colors.white),
+            ),
+          ],
+        )
+        : const Center(child: CircularProgressIndicator());
   }
 }

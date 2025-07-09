@@ -37,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkLogin() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 5));
 
     final prefs = await SharedPreferences.getInstance();
     final userString = prefs.getString('user');
