@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 class CrudFarmService {
-  static const String _baseUrl = "https://api-ndolv2.nongdanonline.vn";
+  static const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
   //lay thong tin farm cua toi
   Future<void> getmyFarm(BuildContext context) async {
     final currentUser = context.read<UserProvider>().user;
@@ -49,7 +49,7 @@ class CrudFarmService {
       return null;
     }
 
-    const String _baseUrl = "https://api-ndolv2.nongdanonline.vn";
+    const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
 
     try {
       final response = await http.post(

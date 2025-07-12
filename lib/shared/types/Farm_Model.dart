@@ -231,6 +231,6 @@ class FarmImage {
 
   String getFullUrl() {
     if (imageUrl.startsWith('http')) return imageUrl;
-    return 'https://api-ndolv2.nongdanonline.vn$imageUrl';
+    return 'https://api-ndolv2.nongdanonline.cc$imageUrl';
   }
 }

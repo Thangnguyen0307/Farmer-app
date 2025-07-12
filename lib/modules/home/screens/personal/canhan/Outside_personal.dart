@@ -2,6 +2,7 @@ import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/home/widgets/Post/Post_Tile.dart';
+import 'package:farmrole/modules/home/widgets/Post/Video_Tile.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:farmrole/shared/types/Video_Model.dart' as video_model;
 import 'package:flutter/material.dart';
@@ -32,12 +33,22 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
   }
 
   void _onScroll() {
-    if (!_loading &&
+    if (_loading) return;
+
+    if (_showPosts &&
         _pagination != null &&
         _pagination!.page < _pagination!.totalPages &&
         _scrollCtrl.position.pixels >
             _scrollCtrl.position.maxScrollExtent - 200) {
-      _showPosts ? _loadPage(_pagination!.page + 1) : _loadVideos();
+      _loadPage(_pagination!.page + 1);
+    }
+
+    if (!_showPosts &&
+        _videoPagination != null &&
+        _videoPagination!.page < _videoPagination!.totalPages &&
+        _scrollCtrl.position.pixels >
+            _scrollCtrl.position.maxScrollExtent - 200) {
+      _loadVideos(page: _videoPagination!.page + 1);
     }
   }
 
@@ -67,16 +78,28 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
     }
   }
 
-  Future<void> _loadVideos() async {
+  Future<void> _loadVideos({int page = 1}) async {
+    final user = context.read<UserProvider>().user;
+    if (user == null) return;
+
     setState(() {
       _loading = true;
       _hasError = false;
     });
 
     try {
-      final r = await _service.fetchLatestVideos(context: context, page: 1);
+      final r = await _service.fetchVideosByUserId(
+        context: context,
+        userId: user.id,
+        page: page,
+        limit: 10,
+      );
       if (r != null) {
-        _videos = r.videos;
+        if (page == 1) {
+          _videos = r.videos;
+        } else {
+          _videos.addAll(r.videos);
+        }
         _videoPagination = r.pagination;
       }
     } catch (_) {
@@ -231,10 +254,13 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
           else
             SliverList(
               delegate: SliverChildBuilderDelegate((ctx, i) {
-                final v = _videos[i];
-                return ListTile(
-                  leading: const Icon(Icons.play_circle_fill),
-                  title: Text(v.title),
+                final video = _videos[i];
+                return Column(
+                  children: [
+                    VideoTile(video: video),
+                    if (i < _videos.length - 1)
+                      Container(height: 3, color: Colors.grey.shade300),
+                  ],
                 );
               }, childCount: _videos.length),
             ),

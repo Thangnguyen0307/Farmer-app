@@ -15,7 +15,7 @@ import 'package:farmrole/shared/types/Post_Model.dart' as post_model;
 import 'package:farmrole/shared/types/Video_Model.dart' as video_model;
 
 class PostService {
-  static const String _baseUrl = "https://api-ndolv2.nongdanonline.vn";
+  static const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
 
   Future<VideoPaginationResponse?> fetchLatestVideos({
     required BuildContext context,
@@ -51,6 +51,48 @@ class PostService {
       }
     } catch (e) {
       debugPrint("Lỗi kết nối video-farm/new: $e");
+      return null;
+    }
+  }
+
+  //lấy video theo id (trang cá nhân + trang cá nhân người khác)
+  Future<VideoPaginationResponse?> fetchVideosByUserId({
+    required BuildContext context,
+    required String userId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final token = context.read<UserProvider>().user?.token;
+
+    if (token == null) {
+      debugPrint("Không có token xác thực");
+      return null;
+    }
+
+    final url = Uri.parse(
+      "$_baseUrl/video-farm/user/$userId?page=$page&limit=$limit",
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return VideoPaginationResponse.fromJson(data);
+      } else {
+        debugPrint(
+          "Lỗi khi lấy video user: ${response.statusCode} - ${response.body}",
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint("Lỗi kết nối video-farm/user: $e");
       return null;
     }
   }
@@ -527,5 +569,71 @@ class PostService {
       body: jsonEncode({'comment': comment}),
     );
     return resp.statusCode == 200;
+  }
+
+  static Future<bool> updatePost({
+  required BuildContext context,
+  required String postId,
+  required String title,
+  required String description,
+  required List<String> tags,
+  required List<String> existingImageUrls,
+  required List<File> imagesFiles, // Không sử dụng nếu không có API upload ảnh
+}) async {
+  try {
+    final token = context.read<UserProvider>().user?.token;
+    if (token == null || token.isEmpty) {
+      throw Exception("Token không hợp lệ");
+    }
+
+    final uri = Uri.parse('$_baseUrl/post-feed/$postId');
+    final res = await http.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "title": title,
+        "description": description,
+        "tags": tags,
+        "images": existingImageUrls, // Chỉ gửi ảnh đã có
+      }),
+    );
+
+    if (res.statusCode == 200) {
+      return true;
+    } else {
+      debugPrint('Update failed: ${res.body}');
+      return false;
+    }
+  } catch (e) {
+    debugPrint('Update error: $e');
+    return false;
+  }
+}
+
+  //delete post
+  static Future<bool> deletePost(BuildContext context, String postId) async {
+    try {
+      final token = context.read<UserProvider>().user?.token;
+      final uri = Uri.parse('$_baseUrl/post-feed/$postId');
+
+      final res = await http.delete(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (res.statusCode == 200) return true;
+
+      debugPrint('Xoá thất bại: ${res.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Lỗi xoá bài viết: $e');
+      return false;
+    }
   }
 }

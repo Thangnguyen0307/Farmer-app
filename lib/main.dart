@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:farmrole/app/AppInitializer.dart';
 import 'package:farmrole/app/router.dart';
 import 'package:farmrole/app/theme.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
@@ -37,18 +37,30 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = context.read<UserProvider>().user;
-    if (user?.token != null) {
-      Future.microtask(() async {
-        await AuthService().myProfile(context);
-      });
-    }
+  State<MyApp> createState() => _MyAppState();
+}
 
+class _MyAppState extends State<MyApp> {
+  bool _initialized = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      AppInitializer.init(context);
+      final user = context.read<UserProvider>().user;
+      if (user?.token != null) {
+        AuthService().myProfile(context);
+      }
+      _initialized = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Farmer App',

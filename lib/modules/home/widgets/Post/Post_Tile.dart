@@ -1,5 +1,6 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
+import 'package:farmrole/modules/home/widgets/Other_Update.dart';
 import 'package:farmrole/modules/home/widgets/Post/Comment_Bottom_Sheet.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:flutter/material.dart';
@@ -136,6 +137,18 @@ class _PostTileState extends State<PostTile> {
                           ),
                         ),
                       ],
+                    ),
+                    const Spacer(),
+                    PostOptionsMenu(
+                      post: post,
+                      onDeleted: () {
+                        // Optional: nếu bạn muốn ẩn bài post khỏi danh sách sau khi xoá
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Bài viết đã bị xoá')),
+                          );
+                        }
+                      },
                     ),
                   ],
                 ),

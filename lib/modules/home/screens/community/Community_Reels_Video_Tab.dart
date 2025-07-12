@@ -1,4 +1,5 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/home/screens/community/Search_Video_Screen.dart';
 import 'package:farmrole/modules/home/widgets/Post/Video_Comment.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
@@ -18,6 +19,10 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
   bool isLoading = true;
   final Map<int, dynamic> _controllers = {};
   int currentIndex = 0;
+  int page = 1;
+  bool isLoadingMore = false;
+  bool hasMore = true;
+  final int limit = 10;
 
   @override
   void initState() {
@@ -25,17 +30,42 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
     loadVideos();
   }
 
-  Future<void> loadVideos() async {
-    final res = await PostService().fetchLatestVideos(context: context);
-    if (res != null && res.videos != null) {
+  Future<void> loadVideos({bool loadMore = false}) async {
+    if (isLoadingMore || (!hasMore && loadMore)) return;
+
+    if (!loadMore) {
+      setState(() => isLoading = true);
+      page = 1;
+      videos.clear();
+      _controllers.clear(); // Clear các controller cũ nếu reload toàn bộ
+    } else {
+      setState(() => isLoadingMore = true);
+    }
+
+    final res = await PostService().fetchLatestVideos(
+      context: context,
+      page: page,
+      limit: limit,
+    );
+
+    if (res != null && res.videos.isNotEmpty) {
       setState(() {
-        videos = res.videos;
-        isLoading = false;
+        videos.addAll(res.videos);
+        page++;
+        hasMore = res.videos.length >= limit;
       });
-      _initializeController(0); // init video đầu tiên
-      _playOnly(0);
+    } else {
+      setState(() => hasMore = false);
+    }
+
+    if (loadMore) {
+      setState(() => isLoadingMore = false);
     } else {
       setState(() => isLoading = false);
+      if (videos.isNotEmpty) {
+        _initializeController(0);
+        _playOnly(0);
+      }
     }
   }
 
@@ -128,6 +158,24 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
               ),
             )
             : const Center(child: CircularProgressIndicator()),
+
+        //search
+        Positioned(
+          top: 10,
+          right: 10,
+          child: IconButton(
+            icon: const Icon(
+              Icons.search,
+              color: Color.fromARGB(255, 236, 235, 235),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchVideoScreen()),
+              );
+            },
+          ),
+        ),
 
         Positioned(
           bottom: 55,
@@ -285,15 +333,21 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
 
     return PageView.builder(
       scrollDirection: Axis.vertical,
-      itemCount: videos.length,
+      itemCount: hasMore ? videos.length + 1 : videos.length,
       onPageChanged: (index) {
         setState(() {
           currentIndex = index;
           _initializeController(index);
           _playOnly(index);
         });
+        if (index >= videos.length - 2 && hasMore && !isLoadingMore) {
+          loadVideos(loadMore: true);
+        }
       },
       itemBuilder: (_, index) {
+        if (index >= videos.length) {
+          return const Center(child: CircularProgressIndicator());
+        }
         return _buildVideo(index);
       },
     );

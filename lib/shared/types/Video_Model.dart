@@ -99,6 +99,7 @@ class Pagination {
       limit: json['limit'] ?? 10,
     );
   }
+  int get totalPages => (total / limit).ceil();
 }
 
 class VideoPaginationResponse {

@@ -2,12 +2,13 @@ import 'dart:convert';
 
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
+import 'package:farmrole/shared/types/Video_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 class FilterService {
-  static const String _baseUrl = "https://api-ndolv2.nongdanonline.vn";
+  static const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
 
   //Search post bang title
   Future<List<PostModel>> searchPosts({
@@ -84,5 +85,49 @@ class FilterService {
       throw Exception('Dữ liệu trả về không hợp lệ');
     }
     return (data['data'] as List).map((e) => PostModel.fromJson(e)).toList();
+  }
+
+  //search video by title
+  Future<VideoPaginationResponse?> searchVideos({
+    required BuildContext context,
+    required String title,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final token = context.read<UserProvider>().user?.token;
+    if (token == null) {
+      debugPrint('searchVideos: Không có token xác thực');
+      return null;
+    }
+
+    final uri = Uri.parse('$_baseUrl/video-farm/search').replace(
+      queryParameters: {
+        'title': title,
+        'page': page.toString(),
+        'limit': limit.toString(),
+      },
+    );
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return VideoPaginationResponse.fromJson(data);
+      } else {
+        debugPrint(
+          'searchVideos: Lỗi ${response.statusCode} - ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('searchVideos: Exception $e');
+      return null;
+    }
   }
 }

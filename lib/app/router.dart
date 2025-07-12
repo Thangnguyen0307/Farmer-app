@@ -2,8 +2,11 @@ import 'package:farmrole/modules/auth/screens/Login_Screen.dart';
 import 'package:farmrole/modules/auth/screens/Register_Screen.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/auth/state/Video_Provider.dart';
+import 'package:farmrole/modules/home/screens/chat/Chat_Room_List_Screen.dart';
+import 'package:farmrole/modules/home/screens/chat/Chat_Room_Screen.dart';
 import 'package:farmrole/modules/home/screens/community/Community_Screen.dart';
 import 'package:farmrole/modules/home/screens/community/Create_Post_Screen.dart';
+import 'package:farmrole/modules/home/screens/community/Update_Post_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/FullScreen_Video_Page.dart';
 import 'package:farmrole/modules/home/screens/community/Search_Post_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/Home_Screen.dart';
@@ -16,6 +19,7 @@ import 'package:farmrole/modules/home/screens/personal/canhan/Setting.dart';
 import 'package:farmrole/modules/home/screens/personal/farmManager/Manager_Farmer.dart';
 import 'package:farmrole/modules/home/widgets/Post/Comment_Screen.dart';
 import 'package:farmrole/modules/home/widgets/MainShell.dart';
+import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -41,7 +45,8 @@ final router = GoRouter(
       routes: [
         GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
 
-        GoRoute(path: '/noti', builder: (_, __) => const NotifiScreen()),
+        GoRoute(path: '/chat', builder: (_, __) => ChatRoomListScreen()),
+
         GoRoute(
           path: '/Outside',
           builder: (_, __) => const OutsidePersonalScreen(),
@@ -62,6 +67,20 @@ final router = GoRouter(
     GoRoute(
       path: '/manager',
       builder: (context, state) => const ManagerFarmer(),
+    ),
+    GoRoute(
+      path: '/update-post',
+      builder: (context, state) {
+        final post = state.extra as PostModel;
+        return UpdatePostScreen(post: post);
+      },
+    ),
+    GoRoute(
+      path: '/chat/room/:roomId',
+      builder: (context, state) {
+        final roomId = state.pathParameters['roomId']!;
+        return ChatRoomScreen(roomId: roomId);
+      },
     ),
     GoRoute(
       path: '/reels',

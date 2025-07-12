@@ -68,15 +68,49 @@ class Setting extends StatelessWidget {
                     context,
                     icon: Icons.person_outline,
                     label: 'Hồ sơ cá nhân',
-                    route: '/profile',
+                    onTapCustom: () => context.push('/profile'),
                   ),
                   Divider(color: Colors.grey.shade200, height: 1),
                   _buildListItem(
                     context,
                     icon: Icons.public_outlined,
                     label: 'Trang trại của tôi',
-                    route: '/manager',
+                    onTapCustom: () async {
+                      final user = context.read<UserProvider>().user;
+                      final roles = user?.roles ?? [];
+
+                      if (!roles.contains('Farmer')) {
+                        final result = await showDialog<bool>(
+                          context: context,
+                          builder:
+                              (_) => AlertDialog(
+                                title: const Text('Yêu cầu đăng ký Farmer'),
+                                content: const Text(
+                                  'Bạn cần là thành viên Farmer để quản lý trang trại. Bạn có muốn đăng ký ngay không?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed:
+                                        () => Navigator.pop(context, false),
+                                    child: const Text('Không'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed:
+                                        () => Navigator.pop(context, true),
+                                    child: const Text('Đăng ký'),
+                                  ),
+                                ],
+                              ),
+                        );
+                        if (result == true) {
+                          context.push('/register-farmer');
+                        }
+                      } else {
+                        context.push('/manager');
+                      }
+                    },
                   ),
+
                   Divider(color: Colors.grey.shade200, height: 1),
                 ],
               ),
@@ -110,7 +144,7 @@ class Setting extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String label,
-    required String route,
+    VoidCallback? onTapCustom,
   }) {
     final theme = Theme.of(context);
     return ListTile(
@@ -126,7 +160,7 @@ class Setting extends StatelessWidget {
       trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      onTap: () => context.push(route),
+      onTap: onTapCustom,
     );
   }
 }

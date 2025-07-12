@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String _baseUrl = "https://api-ndolv2.nongdanonline.vn";
+  static const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
     serverClientId:
@@ -289,6 +289,6 @@ class AuthService {
   static String getFullAvatarUrl(String? avatarPath) {
     if (avatarPath == null || avatarPath.isEmpty) return '';
     if (avatarPath.startsWith('http')) return avatarPath;
-    return 'https://api-ndolv2.nongdanonline.vn$avatarPath';
+    return 'https://api-ndolv2.nongdanonline.cc$avatarPath';
   }
 }
