@@ -1,4 +1,5 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +31,7 @@ class Setting extends StatelessWidget {
     if (confirm != true) return;
     final prefs = await SharedPreferences.getInstance();
     await AuthService().logout();
+    ChatSocketService().disconnect();
     await prefs.remove('user');
     context.read<UserProvider>().clearUser();
     context.go('/');

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/User_Model.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setString('user', json.encode(user.toJson()));
 
     context.read<UserProvider>().setUser(user);
+    ChatSocketService().connect(context);
     debugPrint(
       "User saved with accessToken: ${user.token}, refreshToken: ${user.refreshToken}",
     );

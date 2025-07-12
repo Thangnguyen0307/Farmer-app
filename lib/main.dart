@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:farmrole/app/AppInitializer.dart';
 import 'package:farmrole/app/router.dart';
 import 'package:farmrole/app/theme.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/Farm_Provider.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/auth/state/Video_Provider.dart';
@@ -13,7 +15,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   final prefs = await SharedPreferences.getInstance();
   final userJson = prefs.getString('user');
   UserModel? initialUser;
@@ -46,6 +47,19 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _initialized = false;
+  late final StreamSubscription _statusSub;
+  @override
+  void initState() {
+    super.initState();
+
+    // Lắng nghe onlineStatus toàn cục
+    _statusSub = ChatSocketService().onlineStatus.listen((data) {
+      debugPrint(
+        '⚡ User ${data["userId"]} is now ${data["online"] ? "online" : "offline"}',
+      );
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

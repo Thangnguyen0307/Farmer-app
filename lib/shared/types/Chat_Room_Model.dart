@@ -44,6 +44,7 @@ class ChatRoom {
 
 // lib/models/chat_message.dart
 class ChatMessage {
+  final String clientId;
   final int? id;
   final String roomId;
   final String userId;
@@ -54,6 +55,7 @@ class ChatMessage {
   final DateTime createdAt;
 
   ChatMessage({
+    required this.clientId,
     this.id,
     required this.roomId,
     required this.userId,
@@ -66,6 +68,7 @@ class ChatMessage {
 
   // Tạo từ Map (DB)
   factory ChatMessage.fromMap(Map<String, dynamic> m) => ChatMessage(
+    clientId: m['clientId'],
     id: m['id'],
     roomId: m['roomId'],
     userId: m['userId'],
@@ -73,20 +76,33 @@ class ChatMessage {
     avatar: m['avatar'],
     message: m['message'],
     imageUrl: m['imageUrl'],
-    createdAt: DateTime.parse(m['createdAt']),
+    createdAt: DateTime.tryParse(m['createdAt'] ?? '') ?? DateTime.now(),
   );
 
   factory ChatMessage.fromJsonSafe(Map<String, dynamic> json) {
     try {
+      final createdStr = json['timestamp'] ?? json['createdAt'];
+      if (createdStr == null || createdStr == 'null') {
+        throw Exception('createdAt/timestamp bị null');
+      }
+      final created = DateTime.tryParse(createdStr);
+      if (created == null) {
+        throw Exception('createdAt không parse được: $createdStr');
+      }
+      final clientId =
+          json['clientId'] ??
+          '${created.microsecondsSinceEpoch}_${json['userId'] ?? 'unknown'}';
+
       return ChatMessage(
-        id: json['id'] ?? 0,
+        clientId: clientId,
+        id: null,
         roomId: json['roomId'] ?? '',
         userId: json['userId'] ?? '',
         fullName: json['fullName'] ?? 'Không tên',
         avatar: json['avatar'] is String ? json['avatar'] : null,
         message: json['message'] is String ? json['message'] : null,
         imageUrl: json['imageUrl'] is String ? json['imageUrl'] : null,
-        createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+        createdAt: created,
       );
     } catch (e) {
       throw Exception('Lỗi tạo ChatMessage từ JSON: $e');
@@ -95,6 +111,7 @@ class ChatMessage {
 
   // Chuyển về Map để insert
   Map<String, dynamic> toMap() => {
+    'clientId': clientId,
     if (id != null) 'id': id,
     'roomId': roomId,
     'userId': userId,

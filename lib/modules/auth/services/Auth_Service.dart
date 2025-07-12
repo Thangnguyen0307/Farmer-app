@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/User_Model.dart';
 import 'package:flutter/material.dart';
@@ -92,6 +93,7 @@ class AuthService {
     } else {
       print("Lỗi khi logout: ${response.statusCode} - ${response.body}");
     }
+    ChatSocketService().disconnect();
   }
 
   //hàm refresh token

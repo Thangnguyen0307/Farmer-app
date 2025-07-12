@@ -20,10 +20,19 @@ class ChatSocketService {
   final _statusController = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get statusUpdates => _statusController.stream;
 
+  final _onlineStatusCtrl = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get onlineStatus => _onlineStatusCtrl.stream;
+
+  final Map<String, bool> _userOnlineMap = {};
+  Map<String, bool> get userOnlineMap => _userOnlineMap;
+
   void connect(BuildContext context) {
     if (_connected) return;
     final token = context.read<UserProvider>().user?.token;
-    if (token == null) throw Exception('❌ Chưa có token đăng nhập');
+    if (token == null) {
+      debugPrint('⚠️ Không kết nối socket vì chưa có token');
+      return;
+    }
 
     _socket = io.io(
       'https://api-ndolv2.nongdanonline.cc/chat',
@@ -38,27 +47,30 @@ class ChatSocketService {
       _connected = true;
       debugPrint('✅ Socket connected');
       _socket!.emit('bulkJoinRooms');
+      _socket!.emit('userOnline', {});
     });
 
     _socket!.on('disconnect', (_) => debugPrint('🔌 Socket disconnected'));
 
-    _socket!.on('noti', (data) {
+    _socket!.on('noti', (data) async {
       try {
         final type = data['type'];
         final d = data['data'];
-
+        debugPrint('📥 Socket noti received: type=$type | data=$d');
         if (type == 'chatMessage') {
           final m = ChatMessage.fromJsonSafe(d);
           _messageController.add(m);
-          DBHelper().insertMessage(m);
+          await DBHelper().insertMessage(m);
         } else if (type == 'userStatusUpdate') {
+          debugPrint('🔥 Online status received from noti: $d');
+          _userOnlineMap[d['userId']] = d['online'] ?? false;
+          _onlineStatusCtrl.add(d);
           _statusController.add(d);
         }
       } catch (e) {
         debugPrint('❌ Socket message parse error: $e');
       }
     });
-
     _socket!.onError((err) {
       debugPrint('❌ Socket error: $err');
     });
@@ -66,13 +78,22 @@ class ChatSocketService {
 
   void sendMessage({
     required String roomId,
-    String? message,
+    required String message,
     String? imageUrl,
+    required String userId,
+    required String fullName,
+    String? avatar,
   }) {
+    final now = DateTime.now().toIso8601String();
+    debugPrint('📤 Emit chatMessage: room=$roomId | message=$message');
     _socket?.emit('chatMessage', {
       'roomId': roomId,
+      'userId': userId,
+      'fullName': fullName,
+      'avatar': avatar,
       'message': message,
       'imageUrl': imageUrl,
+      'createdAt': now,
     });
   }
 

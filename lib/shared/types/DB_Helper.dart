@@ -21,6 +21,7 @@ class DBHelper {
     await db.execute('''
       CREATE TABLE chat_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        clientId TEXT UNIQUE,
         roomId TEXT,
         userId TEXT,
         fullName TEXT,
@@ -93,5 +94,10 @@ class DBHelper {
     final database = await db;
     await database.delete('chat_rooms');
     await database.delete('chat_messages');
+  }
+
+  Future<void> deleteDatabaseFile() async {
+    final path = join(await getDatabasesPath(), 'chat_app.db');
+    await deleteDatabase(path);
   }
 }
