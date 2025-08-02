@@ -2,7 +2,7 @@ import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/home/widgets/Post/Post_Tile.dart';
-import 'package:farmrole/modules/home/widgets/Post/Video_Tile.dart';
+import 'package:farmrole/modules/home/widgets/video/Video_Tile.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:farmrole/shared/types/Video_Model.dart' as video_model;
 import 'package:flutter/material.dart';
@@ -27,7 +27,6 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _loadPage(1);
     _scrollCtrl.addListener(_onScroll);
   }
@@ -66,6 +65,7 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
         page: page,
         limit: 10,
       );
+
       if (page == 1)
         _posts = r['posts'];
       else
@@ -109,6 +109,76 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
     }
   }
 
+  //ham gọi my profile để load lại rank + point
+  Future<void> _reloadProfile() async {
+    final authService = AuthService();
+    await authService.myProfile(context);
+
+    try {
+      if (!mounted) return;
+
+      final updatedUser = context.read<UserProvider>().user;
+      if (updatedUser == null) throw Exception("User chưa đăng nhập");
+
+      showDialog(
+        context: context,
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Text('Cập nhật thành công'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (updatedUser.rank != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.emoji_events, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('Hạng: ${updatedUser.rank}')),
+                      ],
+                    ),
+                  const SizedBox(height: 8),
+                  if (updatedUser.totalPoint != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Điểm: ${updatedUser.totalPoint}'),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(); // đóng dialog
+                  },
+                  child: const Text('Đóng'),
+                ),
+              ],
+            ),
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Text('Lỗi'),
+              content: Text('Không thể tải dữ liệu người dùng.\n$e'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(); // đóng dialog
+                  },
+                  child: const Text('Đóng'),
+                ),
+              ],
+            ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _scrollCtrl.dispose();
@@ -123,7 +193,8 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
     final avatarProvider =
         (user?.avatar?.isNotEmpty == true)
             ? NetworkImage(AuthService.getFullAvatarUrl(user!.avatar!))
-            : const AssetImage('lib/assets/image/avatar.png') as ImageProvider;
+            : const AssetImage('lib/assets/icon/person_Fill.png')
+                as ImageProvider;
     final name = user?.fullName ?? 'Người dùng';
     final email = user?.email ?? '';
 
@@ -140,139 +211,232 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: CustomScrollView(
-        controller: _scrollCtrl,
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            floating: true,
-            snap: true,
-            backgroundColor: primary,
-            foregroundColor: Colors.white,
-            title: const Text('Khám phá mở rộng'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                onPressed: () => context.push('/setting'),
+    return WillPopScope(
+      onWillPop: () async {
+        context.go('/home');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        body: CustomScrollView(
+          controller: _scrollCtrl,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              floating: true,
+              snap: true,
+              backgroundColor: Colors.white,
+              foregroundColor: theme.colorScheme.primary,
+              leading: Container(
+                height: 50,
+                width: 50,
+                margin: const EdgeInsets.only(left: 10),
+                padding: const EdgeInsets.only(right: 2),
+                child: Image.asset(
+                  "lib/assets/image/LogoCut2.png",
+                  fit: BoxFit.cover,
+                ),
               ),
-            ],
-          ),
-
-          SliverToBoxAdapter(
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  CircleAvatar(radius: 36, backgroundImage: avatarProvider),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          email,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
+              title: Text(
+                'Trang cá nhân',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+              actions: [
+                IconButton(
+                  icon: Image.asset(
+                    'lib/assets/icon/Setting.png',
+                    width: 38,
+                    height: 38,
+                    color: theme.colorScheme.primary,
                   ),
-                ],
+                  onPressed: () => context.push('/setting'),
+                ),
+              ],
+            ),
+
+            SliverToBoxAdapter(
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 36, backgroundImage: avatarProvider),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          if (user?.rank != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.emoji_events,
+                                  size: 16,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  user!.rank!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.orange.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (user?.totalPoint != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.star,
+                                  size: 16,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${user!.totalPoint} điểm',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Image.asset(
+                        'lib/assets/icon2/Reload.png',
+                        width: 35,
+                        height: 35,
+                        color: theme.colorScheme.primary,
+                      ),
+                      tooltip: 'Tải lại rank & điểm',
+                      onPressed: _reloadProfile,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          SliverToBoxAdapter(
-            child: Container(height: 3, color: Colors.grey.shade300),
-          ),
-
-          // Tab post + video
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverTabDelegate(
-              height: 48,
-              showPosts: _showPosts,
-              onTapPosts: () {
-                setState(() {
-                  _showPosts = true;
-                  _loadPage(1);
-                });
-              },
-              onTapVideos: () {
-                setState(() {
-                  _showPosts = false;
-                  _loadVideos();
-                });
-              },
-              pagination: _pagination,
-              posts: _posts,
+            SliverToBoxAdapter(
+              child: Container(height: 3, color: Colors.grey.shade300),
             ),
-          ),
 
-          // Content: Posts or Videos
-          if (_showPosts)
-            if (_posts.isEmpty && !_loading)
+            // Tab post + video
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _SliverTabDelegate(
+                height: 48,
+                showPosts: _showPosts,
+                onTapPosts: () {
+                  setState(() {
+                    _showPosts = true;
+                    _loadPage(1);
+                  });
+                },
+                onTapVideos: () {
+                  setState(() {
+                    _showPosts = false;
+                    _loadVideos();
+                  });
+                },
+                pagination: _pagination,
+                posts: _posts,
+              ),
+            ),
+
+            // Content: Posts or Videos
+            if (_showPosts)
+              if (_posts.isEmpty && !_loading)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(child: Text('Chưa có bài viết')),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((ctx, i) {
+                    return Column(
+                      children: [
+                        PostTile(
+                          post: _posts[i],
+                          onDeleted: () {
+                            setState(() {
+                              _posts.removeAt(i);
+                              if (_pagination != null) {
+                                _pagination = _pagination!.copyWith(
+                                  total: _pagination!.total - 1,
+                                );
+                              }
+                            });
+                          },
+                          onUpdated: () async {
+                            await _loadPage(1);
+                          },
+                        ),
+
+                        if (i < _posts.length - 1)
+                          Container(height: 3, color: Colors.grey.shade300),
+                      ],
+                    );
+                  }, childCount: _posts.length),
+                )
+            else if (_videos.isEmpty && !_loading)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Center(child: Text('Chưa có bài viết')),
+                  child: Center(child: Text('Chưa có video')),
                 ),
               )
             else
               SliverList(
                 delegate: SliverChildBuilderDelegate((ctx, i) {
+                  final video = _videos[i];
                   return Column(
                     children: [
-                      PostTile(post: _posts[i]),
-                      if (i < _posts.length - 1)
+                      VideoTile(video: video),
+                      if (i < _videos.length - 1)
                         Container(height: 3, color: Colors.grey.shade300),
                     ],
                   );
-                }, childCount: _posts.length),
-              )
-          else if (_videos.isEmpty && !_loading)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Center(child: Text('Chưa có video')),
+                }, childCount: _videos.length),
               ),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate((ctx, i) {
-                final video = _videos[i];
-                return Column(
-                  children: [
-                    VideoTile(video: video),
-                    if (i < _videos.length - 1)
-                      Container(height: 3, color: Colors.grey.shade300),
-                  ],
-                );
-              }, childCount: _videos.length),
-            ),
-          if (_loading)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
+            if (_loading)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               ),
-            ),
-          SliverToBoxAdapter(child: SizedBox(height: 80)),
-        ],
+            SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
+        ),
       ),
     );
   }

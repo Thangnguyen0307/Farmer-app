@@ -1,4 +1,5 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/home/widgets/Post/Comment_Option_Menu.dart';
 import 'package:farmrole/shared/types/Comment_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +9,14 @@ import 'package:farmrole/modules/auth/state/User_Provider.dart';
 class CommentScreen extends StatefulWidget {
   final String postId;
   final ScrollController? scrollController;
-  const CommentScreen({super.key, required this.postId, this.scrollController});
+  final VoidCallback? onCommentAdded;
+
+  const CommentScreen({
+    Key? key,
+    required this.postId,
+    this.scrollController,
+    this.onCommentAdded,
+  }) : super(key: key);
   @override
   State<CommentScreen> createState() => _CommentScreenState();
 }
@@ -18,6 +26,7 @@ class _CommentScreenState extends State<CommentScreen> {
   final TextEditingController _commentController = TextEditingController();
   bool isLoading = true;
   int? replyIndex;
+  bool isSortNewest = true;
 
   @override
   void initState() {
@@ -30,6 +39,7 @@ class _CommentScreenState extends State<CommentScreen> {
       context: context,
       postId: widget.postId,
     );
+    if (!mounted) return;
     setState(() {
       comments = data;
       isLoading = false;
@@ -59,6 +69,7 @@ class _CommentScreenState extends State<CommentScreen> {
     if (success) {
       _commentController.clear();
       replyIndex = null;
+      widget.onCommentAdded?.call();
       await fetchComments();
     }
   }
@@ -67,8 +78,11 @@ class _CommentScreenState extends State<CommentScreen> {
   Widget build(BuildContext context) {
     final user = context.read<UserProvider>().user;
     final primary = Theme.of(context).colorScheme.primary;
+    final displayComments =
+        isSortNewest ? comments.reversed.toList() : comments;
+
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.grey.shade100,
       body: Column(
         children: [
@@ -91,12 +105,17 @@ class _CommentScreenState extends State<CommentScreen> {
                       ),
                     )
                     : ListView.builder(
+                      reverse: !isSortNewest,
                       controller: widget.scrollController,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: comments.length,
+                      itemCount: displayComments.length,
                       itemBuilder: (_, i) {
-                        final c = comments[i];
+                        final c = displayComments[i];
                         final u = c.user;
+                        print(
+                          'UI index: $i, Server index: ${c.index}, Comment: ${c.comment}',
+                        );
+
                         return Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -123,12 +142,15 @@ class _CommentScreenState extends State<CommentScreen> {
                                     // Hàng tên – thời gian – nút Trả lời
                                     Row(
                                       children: [
-                                        Text(
-                                          u.fullName,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
+                                        Flexible(
+                                          child: Text(
+                                            u.fullName,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
 
@@ -141,13 +163,27 @@ class _CommentScreenState extends State<CommentScreen> {
                                             color: Colors.grey.shade600,
                                           ),
                                         ),
+                                        SizedBox(width: 8),
+                                        SizedBox(
+                                          width: 28,
+                                          height: 28,
+                                          child: CommentOptionMenu(
+                                            postId: widget.postId,
+                                            commentIndex: c.index,
+                                            isMyPost:
+                                                user?.id == c.postAuthor.id,
+                                            onDeleted: () => fetchComments(),
+                                          ),
+                                        ),
 
                                         const Spacer(),
 
                                         GestureDetector(
                                           onTap: () {
                                             setState(() {
-                                              replyIndex = i;
+                                              final realIndex = comments
+                                                  .indexOf(displayComments[i]);
+                                              replyIndex = realIndex;
                                               _commentController.clear();
                                             });
                                           },
@@ -181,7 +217,6 @@ class _CommentScreenState extends State<CommentScreen> {
                                         final ru = r.user;
                                         return Padding(
                                           padding: const EdgeInsets.only(
-                                            left: 32,
                                             top: 8,
                                           ),
                                           child: Row(
@@ -208,14 +243,21 @@ class _CommentScreenState extends State<CommentScreen> {
                                                   children: [
                                                     Row(
                                                       children: [
-                                                        Text(
-                                                          ru.fullName,
-                                                          style: const TextStyle(
-                                                            fontSize: 13,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color:
-                                                                Colors.black87,
+                                                        Flexible(
+                                                          child: Text(
+                                                            ru.fullName,
+                                                            style: const TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color:
+                                                                  Colors
+                                                                      .black87,
+                                                            ),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
                                                           ),
                                                         ),
                                                         const SizedBox(
@@ -229,6 +271,25 @@ class _CommentScreenState extends State<CommentScreen> {
                                                                 Colors
                                                                     .grey
                                                                     .shade600,
+                                                          ),
+                                                        ),
+                                                        SizedBox(
+                                                          width: 28,
+                                                          height: 28,
+                                                          child: CommentOptionMenu(
+                                                            postId:
+                                                                widget.postId,
+                                                            commentIndex:
+                                                                c.index,
+                                                            replyIndex: r.index,
+                                                            isMyPost:
+                                                                user?.id ==
+                                                                comments[i]
+                                                                    .postAuthor
+                                                                    .id,
+                                                            onDeleted:
+                                                                () =>
+                                                                    fetchComments(),
                                                           ),
                                                         ),
                                                       ],

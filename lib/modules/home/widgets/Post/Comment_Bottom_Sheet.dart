@@ -3,13 +3,18 @@ import 'package:flutter/material.dart';
 
 class CommentBottomSheet extends StatelessWidget {
   final String postId;
-  const CommentBottomSheet({super.key, required this.postId});
+  final Function()? onCommentAdded;
+  const CommentBottomSheet({
+    Key? key,
+    required this.postId,
+    this.onCommentAdded,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.7, // Chiếm 70% màn hình ban đầu
-      minChildSize: 0.5,
+      initialChildSize: 0.80, // Chiếm 70% màn hình ban đầu
+      minChildSize: 0.70,
       maxChildSize: 0.95,
       expand: false,
       builder: (_, scrollController) {
@@ -35,6 +40,7 @@ class CommentBottomSheet extends StatelessWidget {
                 child: CommentScreen(
                   postId: postId,
                   scrollController: scrollController,
+                  onCommentAdded: onCommentAdded,
                 ),
               ),
             ],

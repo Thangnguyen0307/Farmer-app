@@ -73,15 +73,12 @@ class UploadFarmImage {
     final dir = await getTemporaryDirectory();
     final targetPath = path.join(dir.path, "avatar_temp.jpg");
     int qua = 70;
-    int minHeight = 1080;
-    int minWidth = 1080;
+
     while (qua >= 20) {
       final compressFile = await FlutterImageCompress.compressAndGetFile(
         file.absolute.path,
         targetPath,
         quality: qua,
-        minHeight: minHeight,
-        minWidth: minWidth,
       );
       if (compressFile == null) return null;
       final sizeKb = await compressFile.length() / 2024;
@@ -89,8 +86,6 @@ class UploadFarmImage {
         return File(compressFile.path);
       }
       qua -= 10;
-      minHeight -= 100;
-      minWidth -= 100;
     }
     return null;
   }

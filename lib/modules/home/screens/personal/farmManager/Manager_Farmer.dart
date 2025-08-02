@@ -2,6 +2,7 @@ import 'package:farmrole/modules/home/screens/chat/Chat_Screen.dart';
 import 'package:farmrole/modules/home/screens/personal/farmManager/MyFarm_Screen.dart';
 import 'package:farmrole/modules/home/screens/personal/farmManager/Register_Step1_Farm.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/home/widgets/AppDrawer.dart';
@@ -20,9 +21,9 @@ class _HomeScreenState extends State<ManagerFarmer> {
 
   final List<Map<String, dynamic>> dashboardItems = [
     {
-      "image": "lib/assets/image/Myfarm.png",
-      "title": "Farm của tôi",
-      "subtitle": "Quản lý Farm",
+      "image": "lib/assets/icon/Myfarm.png",
+      "title": "Trang trại của tôi",
+      "subtitle": "Quản lý trang trại",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -31,9 +32,9 @@ class _HomeScreenState extends State<ManagerFarmer> {
       },
     },
     {
-      "image": "lib/assets/image/AddFarm.png",
-      "title": "Đăng kí Farm",
-      "subtitle": "Đăng kí Farm mới",
+      "image": "lib/assets/icon/Signup.png",
+      "title": "Đăng kí trang trại",
+      "subtitle": "Đăng kí trang trại mới",
       "onTap": (BuildContext context) {
         Navigator.push(
           context,
@@ -42,15 +43,17 @@ class _HomeScreenState extends State<ManagerFarmer> {
       },
     },
     {
-      "image": "lib/assets/image/CustomerFarm.png",
-      "title": "Farm khách hàng",
+      "image": "lib/assets/icon/Customerfarm.png",
+      "title": "khách hàng",
       "subtitle": "Khách đã thuê",
+      "comingSoon": true,
       "onTap": (BuildContext context) {},
     },
     {
-      "image": "lib/assets/image/BaoCao.png",
+      "image": "lib/assets/icon/Report.png",
       "title": "Báo cáo",
       "subtitle": "Thống kê hoạt động",
+      "comingSoon": true,
       "onTap": (BuildContext context) {},
     },
   ];
@@ -67,10 +70,15 @@ class _HomeScreenState extends State<ManagerFarmer> {
       _buildHomeTab(context, theme, user.fullName),
       const ChatScreen(),
     ];
-    return Scaffold(
-      drawer: const AppDrawer(),
-      backgroundColor: theme.colorScheme.background,
-      body: IndexedStack(index: _currentIndex, children: tabs),
+    return WillPopScope(
+      onWillPop: () async {
+        context.go('/setting');
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.background,
+        body: IndexedStack(index: _currentIndex, children: tabs),
+      ),
     );
   }
 
@@ -92,34 +100,56 @@ class _HomeScreenState extends State<ManagerFarmer> {
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(20, 40, 20, 24),
+          padding: const EdgeInsets.fromLTRB(10, 40, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Image.asset("lib/assets/image/appbar.png", height: 36),
-                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        context.go('/setting');
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 5),
                   Text(
-                    "FARMER",
+                    "Quản lí trang trại",
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const Spacer(),
-                  const Icon(Icons.notifications_none, color: Colors.white),
-                  const SizedBox(width: 16),
-                  Builder(
-                    builder:
-                        (context) => IconButton(
-                          icon: const Icon(Icons.menu, color: Colors.white),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                        ),
+                  IconButton(
+                    onPressed: () {
+                      context.push('/noti');
+                    },
+                    icon: Image.asset(
+                      'lib/assets/icon/Noti.png',
+                      width: 40,
+                      height: 40,
+                      color: Colors.white,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      context.push('/chat');
+                    },
+                    icon: Image.asset(
+                      'lib/assets/icon2/chat.png',
+                      width: 34,
+                      height: 34,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               WelcomeCard(),
               const SizedBox(height: 6),
               const Text(
@@ -146,6 +176,7 @@ class _HomeScreenState extends State<ManagerFarmer> {
                   imageAsset: item["image"] ?? "",
                   title: item["title"] ?? "",
                   subtitle: item["subtitle"] ?? "",
+                  comingSoon: item["comingSoon"] ?? false,
                   onTap: () => item["onTap"](context),
                 );
               },

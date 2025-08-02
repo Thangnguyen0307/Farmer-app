@@ -1,3 +1,13 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.google.gms:google-services:4.3.15")
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -22,6 +32,7 @@ tasks.register<Delete>("clean") {
 }
 
 plugins {
-   
+    
     id("com.google.gms.google-services") version "4.4.0" apply false
 }
+

@@ -1,8 +1,10 @@
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
+import 'package:farmrole/modules/home/widgets/Post/Chat_Private_Button.dart';
 import 'package:farmrole/modules/home/widgets/Post/Video_Comment.dart';
 import 'package:farmrole/shared/types/Video_Model.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -21,6 +23,7 @@ class _VideoTileState extends State<VideoTile> {
   bool _isInitialized = false;
   bool _isVisible = false;
   bool _hasInitialized = false;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -32,7 +35,7 @@ class _VideoTileState extends State<VideoTile> {
   void _initControllerIfNeeded() {
     if (_hasInitialized || !_isVisible) return;
 
-    final url = AuthService.getFullAvatarUrl(widget.video.youtubeLink);
+    final url = widget.video.youtubeLink;
     _controller = VideoPlayerController.networkUrl(Uri.parse(url))
       ..initialize().then((_) {
         if (mounted) {
@@ -40,12 +43,16 @@ class _VideoTileState extends State<VideoTile> {
             _isInitialized = true;
             _hasInitialized = true;
           });
+          _controller!.addListener(() {
+            if (mounted) setState(() {});
+          });
         }
       });
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _controller?.dispose();
     super.dispose();
   }
@@ -54,20 +61,30 @@ class _VideoTileState extends State<VideoTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final video = widget.video;
+    final vnTime = video.createdAt.add(const Duration(hours: 7));
 
     return VisibilityDetector(
       key: Key('video-tile-${video.id}'),
       onVisibilityChanged: (info) {
-        final visible = info.visibleFraction > 0.2;
+        final visible = info.visibleFraction > 0.95;
         if (visible != _isVisible) {
           if (mounted) {
             setState(() {
               _isVisible = visible;
             });
           }
-          if (visible) _initControllerIfNeeded();
+        }
+
+        if (visible) {
+          _initControllerIfNeeded();
+          if (_controller != null && _controller!.value.isInitialized) {
+            _controller?.play();
+          }
+        } else {
+          _controller?.pause();
         }
       },
+
       child: Container(
         color: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -77,42 +94,47 @@ class _VideoTileState extends State<VideoTile> {
             /// Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundImage:
-                        video.avatar.isNotEmpty
-                            ? NetworkImage(
-                              AuthService.getFullAvatarUrl(video.avatar),
-                            )
-                            : null,
-                    radius: 18,
-                    backgroundColor: Colors.grey.shade300,
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        video.uploadedBy,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+              child: GestureDetector(
+                onTap: () {
+                  context.push('/profile/${video.uploadedById}');
+                },
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundImage:
+                          video.avatar.isNotEmpty
+                              ? NetworkImage(
+                                AuthService.getFullAvatarUrl(video.avatar),
+                              )
+                              : null,
+                      radius: 18,
+                      backgroundColor: Colors.grey.shade300,
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          video.uploadedBy,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${video.createdAt.day.toString().padLeft(2, '0')}/'
-                                '${video.createdAt.month.toString().padLeft(2, '0')} '
-                                '${video.createdAt.hour.toString().padLeft(2, '0')}:' +
-                            '${video.createdAt.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                        Text(
+                          '${vnTime.day.toString().padLeft(2, '0')}/'
+                          '${vnTime.month.toString().padLeft(2, '0')} '
+                          '${vnTime.hour.toString().padLeft(2, '0')}:'
+                          '${vnTime.minute.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -141,24 +163,22 @@ class _VideoTileState extends State<VideoTile> {
                   children: [
                     VideoPlayer(_controller!),
                     VideoProgressIndicator(_controller!, allowScrubbing: true),
-                    Center(
-                      child: IconButton(
-                        icon: Icon(
-                          _controller!.value.isPlaying
-                              ? Icons.pause_circle
-                              : Icons.play_circle,
-                          size: 48,
-                          color: Colors.white,
+                    if (!_controller!.value.isPlaying &&
+                        _controller!.value.isInitialized)
+                      Center(
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.play_circle,
+                            size: 48,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _controller!.play();
+                            });
+                          },
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _controller!.value.isPlaying
-                                ? _controller!.pause()
-                                : _controller!.play();
-                          });
-                        },
                       ),
-                    ),
                   ],
                 ),
               )
@@ -176,10 +196,10 @@ class _VideoTileState extends State<VideoTile> {
             Row(
               children: [
                 const SizedBox(width: 16),
-                Icon(
-                  Icons.thumb_up,
-                  size: 16,
-                  color: theme.colorScheme.primary,
+                Image.asset(
+                  'lib/assets/icon/like_Fill.png',
+                  width: 30,
+                  height: 30,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -222,8 +242,12 @@ class _VideoTileState extends State<VideoTile> {
                       });
                     }
                   },
-                  icon: Icon(
-                    isLiked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
+                  icon: Image.asset(
+                    isLiked
+                        ? 'lib/assets/icon/like_Fill.png'
+                        : 'lib/assets/icon/like_Line.png',
+                    width: 30,
+                    height: 30,
                     color:
                         isLiked
                             ? theme.colorScheme.primary
@@ -257,27 +281,20 @@ class _VideoTileState extends State<VideoTile> {
                       },
                     );
                   },
-                  icon: Icon(
-                    Icons.comment_outlined,
-                    color: Colors.grey.shade600,
+                  icon: Image.asset(
+                    'lib/assets/icon/comment_Line.png',
+                    width: 30,
+                    height: 30,
+                    color: Colors.grey,
                   ),
                   label: Text(
                     'Bình luận',
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () {
-                    // TODO: Nhắn tin
-                  },
-                  icon: Icon(
-                    Icons.message_outlined,
-                    color: Colors.grey.shade600,
-                  ),
-                  label: Text(
-                    'Nhắn tin',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                  ),
+                ChatPrivateButton(
+                  targetUserId: video.uploadedById,
+                  targetFullName: video.uploadedBy,
                 ),
               ],
             ),

@@ -1,6 +1,6 @@
 class CommentModel {
-  final UserModel user;
-  final UserModel postAuthor;
+  final CommentUserModel user;
+  final CommentUserModel postAuthor;
   final String comment;
   final bool status;
   final DateTime createdAt;
@@ -19,8 +19,8 @@ class CommentModel {
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
     return CommentModel(
-      user: UserModel.fromJson(json['userId']),
-      postAuthor: UserModel.fromJson(json['postAuthorId']),
+      user: CommentUserModel.fromJson(json['userId']),
+      postAuthor: CommentUserModel.fromJson(json['postAuthorId']),
       comment: json['comment'] ?? '',
       status: json['status'] ?? true,
       createdAt: DateTime.parse(json['createdAt']),
@@ -34,37 +34,44 @@ class CommentModel {
 }
 
 class ReplyModel {
-  final UserModel user;
+  final CommentUserModel user;
   final String comment;
   final bool status;
   final DateTime createdAt;
+  final int index;
 
   ReplyModel({
     required this.user,
     required this.comment,
     required this.status,
     required this.createdAt,
+    required this.index,
   });
 
   factory ReplyModel.fromJson(Map<String, dynamic> json) {
     return ReplyModel(
-      user: UserModel.fromJson(json['userId']),
+      user: CommentUserModel.fromJson(json['userId']),
       comment: json['comment'] ?? '',
       status: json['status'] ?? true,
       createdAt: DateTime.parse(json['createdAt']),
+      index: json['index'] ?? 0,
     );
   }
 }
 
-class UserModel {
+class CommentUserModel {
   final String id;
   final String fullName;
   final String avatar;
 
-  UserModel({required this.id, required this.fullName, required this.avatar});
+  CommentUserModel({
+    required this.id,
+    required this.fullName,
+    required this.avatar,
+  });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) {
-    return UserModel(
+  factory CommentUserModel.fromJson(Map<String, dynamic> json) {
+    return CommentUserModel(
       id: json['_id'],
       fullName: json['fullName'],
       avatar: json['avatar'],

@@ -1,10 +1,15 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
+import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/home/widgets/Post/Chat_Private_Button.dart';
 import 'package:farmrole/modules/home/widgets/Post/Comment_Bottom_Sheet.dart';
+import 'package:farmrole/modules/home/widgets/Post/Like_User_List_Screen.dart';
+import 'package:farmrole/modules/home/widgets/Post/Report_Post.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:provider/provider.dart';
 
 class PostCommunity extends StatefulWidget {
   final PostModel post;
@@ -17,12 +22,15 @@ class PostCommunity extends StatefulWidget {
 class _PostCommunityState extends State<PostCommunity> {
   late bool isLiked;
   late int likeCount;
+  late int commentCount;
+  bool isExpanded = false;
 
   @override
   void initState() {
     super.initState();
     isLiked = widget.post.yourLike;
     likeCount = widget.post.like;
+    commentCount = widget.post.commentCount;
   }
 
   void _handleLike() async {
@@ -36,6 +44,8 @@ class _PostCommunityState extends State<PostCommunity> {
       setState(() {
         isLiked = !isLiked;
         likeCount += isLiked ? 1 : -1;
+        widget.post.yourLike = isLiked;
+        widget.post.like = likeCount;
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -44,34 +54,165 @@ class _PostCommunityState extends State<PostCommunity> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant PostCommunity oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.post.yourLike != widget.post.yourLike ||
+        oldWidget.post.like != widget.post.like) {
+      setState(() {
+        isLiked = widget.post.yourLike;
+        likeCount = widget.post.like;
+      });
+    }
+  }
+
   void _showImageViewer(
     BuildContext context,
     List<String> imageUrls,
     int initialIndex,
   ) {
-    final imageWidgets =
-        imageUrls
-            .map(
-              (img) => PhotoView(
-                imageProvider: NetworkImage(AuthService.getFullAvatarUrl(img)),
-                backgroundDecoration: const BoxDecoration(color: Colors.black),
-              ),
-            )
-            .toList();
+    final pageController = PageController(initialPage: initialIndex);
+    final theme = Theme.of(context);
     showDialog(
       context: context,
+      barrierColor: Colors.black,
       builder:
-          (_) => Dialog(
-            insetPadding: EdgeInsets.zero,
-            child: Stack(
-              children: [
-                PageView.builder(
-                  controller: PageController(initialPage: initialIndex),
-                  itemCount: imageWidgets.length,
-                  itemBuilder: (_, i) => imageWidgets[i],
+          (_) => StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Scaffold(
+                backgroundColor: Colors.black,
+                body: SafeArea(
+                  child: Stack(
+                    children: [
+                      PageView.builder(
+                        controller: pageController,
+                        itemCount: imageUrls.length,
+                        itemBuilder: (_, i) {
+                          final url = AuthService.getFullAvatarUrl(
+                            imageUrls[i],
+                          );
+                          return PhotoView(
+                            imageProvider: NetworkImage(url),
+                            backgroundDecoration: const BoxDecoration(
+                              color: Colors.black,
+                            ),
+                          );
+                        },
+                      ),
+                      Positioned(
+                        top: 20,
+                        right: 20,
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 60,
+                        left: 40,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            const SizedBox(width: 6),
+                            Text(
+                              '$likeCount lượt thích                          ${widget.post.commentCount} bình luận',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          color: Colors.black.withOpacity(0.5),
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final postId = widget.post.id;
+                                  final success =
+                                      isLiked
+                                          ? await PostService().unlikePost(
+                                            context: context,
+                                            postId: postId,
+                                          )
+                                          : await PostService().likePost(
+                                            context: context,
+                                            postId: postId,
+                                          );
+                                  if (success) {
+                                    setState(() {
+                                      isLiked = !isLiked;
+                                      likeCount += isLiked ? 1 : -1;
+                                    });
+                                    setStateDialog(() {});
+                                  }
+                                },
+                                icon: Icon(
+                                  isLiked
+                                      ? Icons.thumb_up_alt
+                                      : Icons.thumb_up_alt_outlined,
+                                  color:
+                                      isLiked
+                                          ? Theme.of(
+                                            context,
+                                          ).colorScheme.primary
+                                          : Colors.grey.shade400,
+                                ),
+                                label: Text(
+                                  'Thích',
+                                  style: TextStyle(
+                                    color:
+                                        isLiked
+                                            ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                            : Colors.grey.shade400,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder:
+                                        (_) => CommentBottomSheet(
+                                          postId: widget.post.id,
+                                        ),
+                                  );
+                                },
+                                icon: Icon(
+                                  Icons.comment_outlined,
+                                  color: Colors.grey.shade400,
+                                ),
+                                label: const Text(
+                                  'Bình luận',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
     );
   }
@@ -80,6 +221,10 @@ class _PostCommunityState extends State<PostCommunity> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final post = widget.post;
+    final localTime = post.createdAt.toLocal();
+    final currentUserId = context.read<UserProvider>().user?.id;
+    final isOwner = currentUserId == post.author.id;
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.only(top: 12, bottom: 12),
@@ -94,51 +239,66 @@ class _PostCommunityState extends State<PostCommunity> {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundImage:
-                          post.author.avatar.isNotEmpty
-                              ? NetworkImage(
-                                AuthService.getFullAvatarUrl(
-                                  post.author.avatar,
-                                ),
-                              )
-                              : null,
-                      backgroundColor: Colors.grey.shade200,
-                      child:
-                          post.author.avatar.isEmpty
-                              ? const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 18,
-                              )
-                              : null,
+                    GestureDetector(
+                      onTap: () => context.push('/profile/${post.author.id}'),
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundImage:
+                            post.author.avatar.isNotEmpty
+                                ? NetworkImage(
+                                  AuthService.getFullAvatarUrl(
+                                    post.author.avatar,
+                                  ),
+                                )
+                                : null,
+                        backgroundColor: Colors.grey.shade200,
+                        child:
+                            post.author.avatar.isEmpty
+                                ? const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 18,
+                                )
+                                : null,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          post.author.fullName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                    GestureDetector(
+                      onTap: () => context.push('/profile/${post.author.id}'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 180, // Giới hạn chiều ngang
+                            child: Text(
+                              post.author.fullName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${post.createdAt.day.toString().padLeft(2, '0')}/'
-                          '${post.createdAt.month.toString().padLeft(2, '0')} '
-                          '${post.createdAt.hour.toString().padLeft(2, '0')}:'
-                          '${post.createdAt.minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
+
+                          Text(
+                            '${localTime.day.toString().padLeft(2, '0')}/'
+                            '${localTime.month.toString().padLeft(2, '0')} '
+                            '${localTime.hour.toString().padLeft(2, '0')}:'
+                            '${localTime.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const Spacer(),
+                    ReportPost(post: post),
                   ],
                 ),
+
                 const SizedBox(height: 8),
                 Text(
                   post.title,
@@ -148,7 +308,33 @@ class _PostCommunityState extends State<PostCommunity> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(post.description, style: const TextStyle(fontSize: 14)),
+                Text(
+                  post.description,
+                  maxLines: isExpanded ? null : 3,
+                  overflow:
+                      isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14),
+                ),
+
+                if (post.description.length > 100)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        isExpanded = !isExpanded;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        isExpanded ? 'Thu gọn' : 'Xem thêm',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -162,32 +348,51 @@ class _PostCommunityState extends State<PostCommunity> {
           // Like + Comment summary
           Row(
             children: [
-              const SizedBox(width: 20),
-              Icon(Icons.thumb_up, size: 16, color: theme.colorScheme.primary),
-              const SizedBox(width: 4),
-              Text(
-                '$likeCount lượt thích',
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              const SizedBox(width: 15),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => LikeUserListScreen(postId: widget.post.id),
+                    ),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      '$likeCount lượt thích',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const Spacer(),
               Padding(
                 padding: const EdgeInsets.only(right: 20),
                 child: Text(
-                  '${post.commentCount} bình luận',
+                  '${widget.post.commentCount} bình luận',
                   style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                 ),
               ),
             ],
           ),
-
           //Nut like + Comment
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               TextButton.icon(
                 onPressed: _handleLike,
-                icon: Icon(
-                  isLiked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
+                icon: Image.asset(
+                  isLiked
+                      ? 'lib/assets/icon/like_Fill.png'
+                      : 'lib/assets/icon/like_Line.png',
+                  width: 28,
+                  height: 28,
                   color:
                       isLiked
                           ? theme.colorScheme.primary
@@ -210,25 +415,33 @@ class _PostCommunityState extends State<PostCommunity> {
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
-                    builder: (_) => CommentBottomSheet(postId: post.id),
+                    builder:
+                        (_) => CommentBottomSheet(
+                          postId: post.id,
+                          onCommentAdded: () {
+                            setState(() {
+                              commentCount += 1;
+                            });
+                          },
+                        ),
                   );
                 },
-                icon: Icon(Icons.comment_outlined, color: Colors.grey.shade600),
+                icon: Image.asset(
+                  'lib/assets/icon/comment_Line.png',
+                  width: 30,
+                  height: 30,
+                  color: Colors.grey,
+                ),
                 label: Text(
                   'Bình luận',
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
               ),
-              TextButton.icon(
-                onPressed: () {
-                  // TODO: xử lý nhắn tin
-                },
-                icon: Icon(Icons.message_outlined, color: Colors.grey.shade600),
-                label: Text(
-                  'Nhắn tin',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              if (!isOwner)
+                ChatPrivateButton(
+                  targetUserId: post.author.id,
+                  targetFullName: post.author.fullName,
                 ),
-              ),
             ],
           ),
         ],

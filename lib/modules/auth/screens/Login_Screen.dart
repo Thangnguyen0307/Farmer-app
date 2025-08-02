@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:farmrole/app/AppInitializer.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await prefs.setString('user', json.encode(user.toJson()));
 
     context.read<UserProvider>().setUser(user);
-    ChatSocketService().connect(context);
+    ChatSocketService().connect(token: user.token!, userId: user.id);
     debugPrint(
       "User saved with accessToken: ${user.token}, refreshToken: ${user.refreshToken}",
     );
@@ -59,11 +61,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (result != null) {
       await saveAndSetUser(context, result);
+      await AppInitializer.init(context);
       context.go('/home');
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Sai email hoặc mật khẩu")));
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Đăng nhập thất bại'),
+              content: const Text('Sai email hoặc mật khẩu, vui lòng thử lại.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Đóng'),
+                ),
+              ],
+            ),
+      );
     }
   }
 
@@ -81,32 +95,41 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _launchTermsUrl() async {
+    final uri = Uri.parse('https://webadmin-dev.vercel.app/chinh-sach/bao-mat');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      throw 'Could not launch $uri';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: Colors.grey.shade100,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
               CircleAvatar(
-                radius: 40,
+                radius: 60,
                 backgroundColor: colorScheme.primary.withOpacity(0.1),
                 child: ClipOval(
                   child: Image.asset(
-                    'lib/assets/image/garden.png',
-                    width: 80,
-                    height: 80,
+                    'lib/assets/image/LogoCut1.png',
+                    width: 120,
+                    height: 120,
                     fit: BoxFit.cover,
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                "Chào mừng bạn đến Farmer App",
+                "Chào mừng bạn đến FARMTALK",
                 style: GoogleFonts.nunito(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -121,9 +144,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     TextFormField(
                       controller: _emailController,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w300,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                       keyboardType: TextInputType.emailAddress,
                       decoration: _inputDecoration(
-                        "Email",
+                        "email",
                         Icons.email,
                         colorScheme,
                       ),
@@ -137,16 +165,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: true,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w300,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                       decoration: _inputDecoration(
-                        "Mật khẩu",
+                        "mật khẩu",
                         Icons.lock,
                         colorScheme,
                       ),
-                      validator:
-                          (value) =>
-                              value == null || value.length < 6
-                                  ? 'Mật khẩu ≥ 6 ký tự'
-                                  : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty)
+                          return 'Nhập mật khẩu';
+                        if (value != value.trim())
+                          return 'Không được để khoảng trắng đầu/cuối';
+                        if (value.length < 6) return 'Mật khẩu ≥ 6 ký tự';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 30),
                     SizedBox(
@@ -169,39 +205,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? const CircularProgressIndicator(
                                   color: Colors.white,
                                 )
-                                : const Text("Đăng nhập"),
+                                : const Text(
+                                  "Đăng nhập",
+                                  style: TextStyle(color: Colors.white),
+                                ),
                       ),
                     ),
+
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: _handleGoogleLogin,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey.shade400),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => context.push('/forgot-password'),
+                        child: const Text(
+                          "Quên mật khẩu?",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            decoration: TextDecoration.underline,
+                            color: Colors.black54,
                           ),
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black87,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'lib/assets/image/google.png',
-                              height: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              "Tiếp tục với Google",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ),
@@ -222,6 +245,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 5),
+                    TextButton(
+                      onPressed: _launchTermsUrl,
+                      child: Text(
+                        "Điều khoản & Chính sách bảo mật",
+                        style: TextStyle(
+                          decoration: TextDecoration.underline,
+                          color: colorScheme.primary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -238,13 +273,43 @@ class _LoginScreenState extends State<LoginScreen> {
     ColorScheme colorScheme,
   ) {
     return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: colorScheme.primary),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      focusedBorder: OutlineInputBorder(
-        borderSide: BorderSide(color: colorScheme.primary, width: 2),
-        borderRadius: BorderRadius.circular(12),
+      // Label và icon như cũ
+      label: Padding(
+        padding: const EdgeInsets.only(top: 0, left: 0),
+        child: Text(
+          label,
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w400,
+            fontSize: 16,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
       ),
+      prefixIcon: Padding(
+        padding: const EdgeInsets.only(left: 12, right: 8),
+        child: Icon(icon, color: colorScheme.primary, size: 20),
+      ),
+      floatingLabelBehavior: FloatingLabelBehavior.never,
+
+      // Loại bỏ mọi đường kẻ, thay bằng bo góc
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(2),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(2),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(2),
+        borderSide: BorderSide.none,
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(2),
+        borderSide: BorderSide.none,
+      ),
+      filled: true,
+      fillColor: Colors.white,
     );
   }
 }

@@ -71,7 +71,9 @@ class UploadImagePost {
   //nen anh
   Future<File?> compressImage(File file) async {
     final dir = await getTemporaryDirectory();
-    final targetPath = path.join(dir.path, "avatar_temp.jpg");
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final extension = path.extension(file.path);
+    final targetPath = path.join(dir.path, 'compressed_$timestamp$extension');
 
     int quality = 80;
 

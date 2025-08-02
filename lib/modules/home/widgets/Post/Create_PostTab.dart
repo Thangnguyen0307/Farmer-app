@@ -20,6 +20,8 @@ class _PostTabState extends State<PostTab> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _tagController = TextEditingController();
+  bool isLoading = false;
+  String? _tagErrorMessage;
   final List<File> _selectedImages = [];
   final UploadImagePost _uploader = UploadImagePost();
   final List<String> _selectedTags = [];
@@ -38,10 +40,7 @@ class _PostTabState extends State<PostTab> {
   String? _errorMessage;
 
   InputDecoration _inputDecoration(String label) {
-    final side = BorderSide(
-      color: Colors.grey.shade400, // rất nhạt
-      width: 0.5, // mảnh
-    );
+    final side = BorderSide(color: Colors.grey.shade400, width: 0.5);
 
     return InputDecoration(
       labelText: label,
@@ -87,8 +86,18 @@ class _PostTabState extends State<PostTab> {
 
   void _addTag(String tag) {
     tag = tag.trim();
-    if (tag.isEmpty || _selectedTags.contains(tag)) return;
-    setState(() => _selectedTags.add(tag));
+    if (tag.isEmpty) return;
+    if (_selectedTags.contains(tag)) {
+      setState(() {
+        _tagErrorMessage = 'Tag "$tag" đã tồn tại';
+      });
+      _tagController.clear();
+      return;
+    }
+    setState(() {
+      _selectedTags.add(tag);
+      _tagErrorMessage = null;
+    });
     _tagController.clear();
   }
 
@@ -125,6 +134,9 @@ class _PostTabState extends State<PostTab> {
   }
 
   Future<void> _savePost() async {
+    if (isLoading) return;
+    setState(() => isLoading = true);
+
     final prefs = await SharedPreferences.getInstance();
     final postData = {
       'title': _titleController.text,
@@ -141,10 +153,25 @@ class _PostTabState extends State<PostTab> {
         _selectedImages.isNotEmpty ? _selectedImages : null,
         context,
       );
+      prefs.remove('lastPost');
+      setState(() {
+        _titleController.clear();
+        _contentController.clear();
+        _tagController.clear();
+        _selectedImages.clear();
+        _selectedTags.clear();
+        _errorMessage = null;
+        isLoading = false;
+      });
       if (!mounted) return;
       GoRouter.of(context).pushReplacement('/Outside', extra: postData);
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = e.toString());
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -173,11 +200,51 @@ class _PostTabState extends State<PostTab> {
                         : null,
               ),
               const SizedBox(width: 12),
-              Text(
-                user?.fullName ?? 'Người dùng',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user?.fullName ?? 'Người dùng',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (user?.rank != null)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.emoji_events,
+                            color: Colors.orange,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${user!.rank}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.amber.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (user?.totalPoint != null)
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Điểm: ${user!.totalPoint}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.amber.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -212,12 +279,12 @@ class _PostTabState extends State<PostTab> {
                 ),
               );
             },
-            fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+            fieldViewBuilder: (context, _, focusNode, onSubmitted) {
               return Row(
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: controller,
+                      controller: _tagController,
                       style: const TextStyle(
                         fontWeight: FontWeight.w200,
                         color: Color.fromARGB(255, 78, 78, 78),
@@ -229,13 +296,21 @@ class _PostTabState extends State<PostTab> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.check),
-                    onPressed: () => _addTag(controller.text),
+                    onPressed: () => _addTag(_tagController.text),
                   ),
                 ],
               );
             },
             onSelected: _addTag,
           ),
+          if (_tagErrorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                _tagErrorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: 12),
+              ),
+            ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -340,24 +415,22 @@ class _PostTabState extends State<PostTab> {
             alignment: Alignment.centerRight,
             child: SizedBox(
               height: 44,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  if (_titleController.text.trim().isEmpty ||
-                      _contentController.text.trim().isEmpty) {
-                    setState(
-                      () =>
-                          _errorMessage =
-                              'Tiêu đề và nội dung không được bỏ trống!',
-                    );
-                    return;
-                  }
-                  _savePost();
-                },
-
-                label: const Text(
-                  'Đăng bài',
-                  style: TextStyle(color: Colors.white),
-                ),
+              child: ElevatedButton(
+                onPressed:
+                    isLoading
+                        ? null
+                        : () {
+                          if (_titleController.text.trim().isEmpty ||
+                              _contentController.text.trim().isEmpty) {
+                            setState(
+                              () =>
+                                  _errorMessage =
+                                      'Tiêu đề và nội dung không được bỏ trống!',
+                            );
+                            return;
+                          }
+                          _savePost();
+                        },
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
                   backgroundColor: Theme.of(context).colorScheme.primary,
@@ -371,6 +444,20 @@ class _PostTabState extends State<PostTab> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                child:
+                    isLoading
+                        ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : const Text(
+                          'Đăng bài',
+                          style: TextStyle(color: Colors.white),
+                        ),
               ),
             ),
           ),

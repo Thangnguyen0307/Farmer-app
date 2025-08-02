@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:farmrole/env/env.dart';
 import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/User_Model.dart';
@@ -11,7 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
+  static final String _baseUrl = Environment.config.baseUrl;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
     serverClientId:
@@ -170,6 +171,21 @@ class AuthService {
     }
   }
 
+  //Quen mat khau
+  static Future<bool> forgotPassword(String email) async {
+    final uri = Uri.parse('$_baseUrl/auth/forgot-password');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    if (res.statusCode == 200) {
+      return true;
+    }
+    return false;
+  }
+
   //lay thong tin nguoi dung
   Future<void> myProfile(BuildContext context) async {
     final currentUser = context.read<UserProvider>().user;
@@ -179,7 +195,6 @@ class AuthService {
       Uri.parse("$_baseUrl/users/my"),
       headers: {"Authorization": "Bearer $token", "Accept": "application/json"},
     );
-
     if (response.statusCode == 401) {
       token = await refreshAccessToken(context);
       if (token != null) {
@@ -193,15 +208,15 @@ class AuthService {
       } else {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('user');
-        if (context.mounted) context.go('/');
+        // if (context.mounted) context.go('/');
         return;
       }
     }
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      var newUser = UserModel.fromJson(data).copyWith(token: token);
-
+      var newUser = UserModel.fromJson(data['user']).copyWith(token: token);
+      print('user JSON only: ${data['user']}');
       context.read<UserProvider>().setUser(newUser);
 
       final prefs = await SharedPreferences.getInstance();
@@ -287,10 +302,42 @@ class AuthService {
     }
   }
 
+  ///xoa tai khoan
+  static Future<bool> deleteMyAccount(BuildContext context) async {
+    final userProvider = context.read<UserProvider>();
+    final token = userProvider.user?.token;
+
+    if (token == null || token.isEmpty) {
+      debugPrint('Không có token. Người dùng chưa đăng nhập.');
+      return false;
+    }
+    final url = Uri.parse('$_baseUrl/auth/delete-my-user');
+    try {
+      final response = await http.delete(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        debugPrint('✅ Xoá tài khoản thành công');
+        return true;
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ Token không hợp lệ hoặc đã hết hạn');
+      } else {
+        debugPrint('❌ Lỗi khi xoá tài khoản: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Lỗi kết nối: $e');
+    }
+    return false;
+  }
+
   //ham lay avatar tu server
   static String getFullAvatarUrl(String? avatarPath) {
     if (avatarPath == null || avatarPath.isEmpty) return '';
     if (avatarPath.startsWith('http')) return avatarPath;
-    return 'https://api-ndolv2.nongdanonline.cc$avatarPath';
+    return '$_baseUrl$avatarPath';
   }
 }

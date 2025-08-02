@@ -6,50 +6,29 @@ import 'package:go_router/go_router.dart';
 class PostOptionsMenu extends StatelessWidget {
   final PostModel post;
   final VoidCallback? onDeleted;
+  final VoidCallback? onUpdated;
 
-  const PostOptionsMenu({super.key, required this.post, this.onDeleted});
-
-  void _showDeleteConfirm(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('Xác nhận'),
-            content: const Text('Bạn có chắc muốn xoá bài viết này?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Huỷ'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(ctx).pop();
-                  final success = await PostService.deletePost(
-                    context,
-                    post.id,
-                  );
-                  if (success && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đã xoá bài viết')),
-                    );
-                    onDeleted?.call();
-                  }
-                },
-                child: const Text('Xoá', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-    );
-  }
+  const PostOptionsMenu({
+    super.key,
+    required this.post,
+    this.onDeleted,
+    this.onUpdated,
+  });
 
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      onSelected: (value) {
+      onSelected: (value) async {
         switch (value) {
           case 'update':
-            GoRouter.of(context).push('/update-post', extra: post);
+            final updated = await GoRouter.of(
+              context,
+            ).push<bool>('/update-post', extra: post);
+            if (updated == true) {
+              onUpdated?.call();
+            }
             break;
+
           case 'delete':
             _showDeleteConfirm(context);
             break;
@@ -59,11 +38,72 @@ class PostOptionsMenu extends StatelessWidget {
           (context) => [
             const PopupMenuItem(
               value: 'update',
-              child: Text('Cập nhật bài viết'),
+              child: Text('Chỉnh sửa bài viết'),
             ),
-            const PopupMenuItem(value: 'delete', child: Text('Xoá bài viết')),
+            const PopupMenuItem(value: 'delete', child: Text('Xóa bài viết')),
           ],
       icon: const Icon(Icons.more_vert),
     );
+  }
+
+  void _showDeleteConfirm(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Xóa bài viết'),
+            content: const Text(
+              'Bạn có chắc chắn muốn xóa bài viết này không?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) return;
+
+    final success = await PostService.deletePost(context, post.id);
+    if (!context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle_outline : Icons.error_outline,
+              color: success ? Colors.green : Colors.red,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                success
+                    ? 'Đã xóa bài viết thành công.'
+                    : 'Xóa bài viết thất bại. Vui lòng thử lại.',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.grey.shade900,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    if (success) {
+      onDeleted?.call();
+    }
   }
 }

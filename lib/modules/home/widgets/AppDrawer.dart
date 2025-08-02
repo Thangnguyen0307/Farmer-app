@@ -71,15 +71,21 @@ class AppDrawer extends StatelessWidget {
                         ? NetworkImage(
                           AuthService.getFullAvatarUrl(user.avatar!),
                         )
-                        : const AssetImage('lib/assets/image/avatar.png')
+                        : const AssetImage('lib/assets/icon/person_Fill.png')
                             as ImageProvider,
                 onBackgroundImageError: (_, __) {},
               ),
               accountName: Text(
                 user?.fullName ?? 'Người dùng',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              accountEmail: Text(user?.email ?? 'Chưa đăng nhập'),
+              accountEmail: Text(
+                user?.email ?? 'Chưa đăng nhập',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ),
 

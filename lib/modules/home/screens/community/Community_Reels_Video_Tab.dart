@@ -1,7 +1,10 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/home/screens/community/Search_Video_Screen.dart';
+import 'package:farmrole/modules/home/widgets/Post/Report_Video.dart';
+import 'package:farmrole/modules/home/widgets/video/Chat_Private_Video_Button.dart';
 import 'package:farmrole/modules/home/widgets/Post/Video_Comment.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
@@ -23,6 +26,7 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
   bool isLoadingMore = false;
   bool hasMore = true;
   final int limit = 10;
+  Map<int, bool> _isExpandedTitle = {};
 
   @override
   void initState() {
@@ -153,7 +157,18 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
                 },
                 child: AspectRatio(
                   aspectRatio: controller.value.aspectRatio,
-                  child: VideoPlayer(controller),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      VideoPlayer(controller),
+                      if (!controller.value.isPlaying)
+                        const Icon(
+                          Icons.play_arrow,
+                          size: 50,
+                          color: Colors.white70,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -187,40 +202,52 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
               Row(
                 children: [
                   // Avatar
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundImage: NetworkImage(
-                      AuthService.getFullAvatarUrl(video.avatar),
-                    ),
-                    backgroundColor: Colors.grey.shade200,
-                  ),
-                  const SizedBox(width: 8),
-                  // Tên + farm
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  GestureDetector(
+                    onTap: () {
+                      context.push('/profile/${video.uploadedById}');
+                    },
+                    child: Row(
                       children: [
-                        Text(
-                          video.uploadedBy,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            shadows: [
-                              Shadow(blurRadius: 4, color: Colors.black),
-                            ],
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundImage: NetworkImage(
+                            AuthService.getFullAvatarUrl(video.avatar),
                           ),
+                          backgroundColor: Colors.grey.shade200,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          video.farmName,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            shadows: [
-                              Shadow(blurRadius: 4, color: Colors.black),
-                            ],
-                          ),
+                        const SizedBox(width: 8),
+                        // Tên + farm
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 180,
+                              child: Text(
+                                video.uploadedBy,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  shadows: [
+                                    Shadow(blurRadius: 4, color: Colors.black),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              video.farmName,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                shadows: [
+                                  Shadow(blurRadius: 4, color: Colors.black),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -228,17 +255,7 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                video.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 8)],
-                ),
-              ),
+              _buildTitle(index),
             ],
           ),
         ),
@@ -269,10 +286,12 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
                     });
                   }
                 },
-                icon: Icon(
-                  video.yourLike ? Icons.favorite : Icons.favorite_border,
-                  color: video.yourLike ? Colors.red : Colors.white,
-                  size: 32,
+                icon: Image.asset(
+                  video.yourLike
+                      ? 'lib/assets/icon2/Heart2.png'
+                      : 'lib/assets/icon2/Heart_Line2.png',
+                  width: 35,
+                  height: 35,
                 ),
               ),
               Text(
@@ -297,18 +316,35 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
                     },
                   );
                 },
-                icon: const Icon(Icons.comment, color: Colors.white, size: 30),
+                icon: Image.asset(
+                  'lib/assets/icon/comment_Fill.png',
+                  width: 34,
+                  height: 34,
+                  color: Colors.white,
+                ),
               ),
               Text(
                 '${video.commentCount}',
                 style: const TextStyle(color: Colors.white),
               ),
               const SizedBox(height: 16),
-              IconButton(
-                onPressed: () {
-                  // TODO: mở màn hình chat
-                },
-                icon: const Icon(Icons.send, color: Colors.white, size: 28),
+              Column(
+                children: [
+                  ChatPrivateVideoButton(
+                    targetUserId: video.uploadedById,
+                    targetFullName: video.uploadedBy,
+                  ),
+                  const Text(
+                    'Gửi',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      shadows: [Shadow(blurRadius: 4, color: Colors.black)],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ReportVideo(video: video),
+                ],
               ),
             ],
           ),
@@ -349,6 +385,69 @@ class _CommunityReelsVideoTabState extends State<CommunityReelsVideoTab> {
           return const Center(child: CircularProgressIndicator());
         }
         return _buildVideo(index);
+      },
+    );
+  }
+
+  //widget hiển thị title
+  Widget _buildTitle(int index) {
+    final video = videos[index];
+    final isExpanded = _isExpandedTitle[index] ?? false;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textSpan = TextSpan(
+          text: video.title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        );
+
+        final tp = TextPainter(
+          text: textSpan,
+          maxLines: 2,
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: constraints.maxWidth);
+
+        final isOverflowing = tp.didExceedMaxLines;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                video.title,
+                maxLines: isExpanded ? null : 2,
+                overflow:
+                    isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  shadows: [Shadow(color: Colors.black, blurRadius: 8)],
+                ),
+              ),
+            ),
+            if (isOverflowing || isExpanded)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isExpandedTitle[index] = !isExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    isExpanded ? 'Thu gọn' : 'Xem thêm',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
       },
     );
   }

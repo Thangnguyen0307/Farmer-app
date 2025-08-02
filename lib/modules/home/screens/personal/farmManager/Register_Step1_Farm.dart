@@ -46,17 +46,36 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
     "Không khí": "air_quality_sensor",
   };
 
-  final List<String> TAGS = [
-    "trồng rau",
-    "hữu cơ",
-    "gần TP",
-    "tự động",
-    "giống bản địa",
-    "gần KCN",
-  ];
+  final Map<String, String> SERVICE_ICON_PATHS = {
+    "Bán trực tiếp": "lib/assets/Enum/Direct.png",
+    "Bán thức ăn": "lib/assets/Enum/Feed.png",
+    "Trộn thức ăn": "lib/assets/Enum/Custom_feed.png",
+    "Chế biến": "lib/assets/Enum/Processing.png",
+    "Kho bãi": "lib/assets/Enum/Storage.png",
+    "Vận chuyển": "lib/assets/Enum/Transport.png",
+    "Khác": "lib/assets/Enum/Other.png",
+  };
+
+  final Map<String, String> FEATURE_ICON_PATHS = {
+    "Aquaponic": "lib/assets/Enum/Aquaponic.png",
+    "RAS": "lib/assets/Enum/Ras.png",
+    "Thủy canh": "lib/assets/Enum/Hydroponic.png",
+    "Nhà kính": "lib/assets/Enum/Greenhouse.png",
+    "Đa tầng": "lib/assets/Enum/Vertical.png",
+    "VietGAP": "lib/assets/Enum/Vietgap.png",
+    "Organic": "lib/assets/Enum/Organic.png",
+    "GlobalGAP": "lib/assets/Enum/Global.png",
+    "HACCP": "lib/assets/Enum/HACCP.png",
+    "Camera": "lib/assets/Enum/Camera.png",
+    "Drone": "lib/assets/Enum/Drone.png",
+    "Pest AI": "lib/assets/Enum/Auto_pest.png",
+    "Irrigation AI": "lib/assets/Enum/Precision_irri.png",
+    "Tự động": "lib/assets/Enum/auto_irrigation.png",
+    "Cảm biến đất": "lib/assets/Enum/Soil_based.png",
+    "Không khí": "lib/assets/Enum/Air_quality.png",
+  };
 
   List<String> selServ = [], selFeat = [], selTags = [];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -154,26 +173,23 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
                       selFeat,
                     ),
                     const SizedBox(height: 12),
-                    _buildFilterGroup('Tags mô tả', TAGS, selTags),
+                    _buildTagsInput(),
                   ],
                 ),
               ),
               SectionCard(
-                title: 'Liên hệ & Giờ mở cửa',
+                title: 'Liên hệ',
                 child: Column(
                   children: [
                     _buildTextField(
                       'Số điện thoại',
                       onSaved: (v) => _newFarm = _newFarm.copyWith(phone: v),
+                      required: false,
                     ),
                     _buildTextField(
                       'Zalo',
                       onSaved: (v) => _newFarm = _newFarm.copyWith(zalo: v),
-                    ),
-                    _buildTextField(
-                      'Giờ hoạt động',
-                      onSaved:
-                          (v) => _newFarm = _newFarm.copyWith(operationTime: v),
+                      required: false,
                     ),
                   ],
                 ),
@@ -273,6 +289,7 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
     String label, {
     TextInputType keyboardType = TextInputType.text,
     required void Function(String?) onSaved,
+    bool required = true,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -280,20 +297,33 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
         onSaved: onSaved,
         keyboardType: keyboardType,
         validator:
-            (v) => v == null || v.isEmpty ? 'Vui lòng nhập $label' : null,
+            required
+                ? (v) => v == null || v.isEmpty ? 'Vui lòng nhập $label' : null
+                : null,
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-          filled: true,
-          fillColor: Colors.grey.shade50,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 10,
           ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+              color: Theme.of(context).primaryColor,
+              width: 1,
+            ),
           ),
         ),
       ),
@@ -305,6 +335,8 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
     List<String> items,
     List<String> selected,
   ) {
+    final isService = title.contains('Dịch vụ');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -319,13 +351,29 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
           children:
               items.map((item) {
                 final isSel = selected.contains(item);
+                final imagePath =
+                    isService
+                        ? SERVICE_ICON_PATHS[item]
+                        : FEATURE_ICON_PATHS[item];
+
                 return FilterChip(
-                  label: Text(item, style: const TextStyle(fontSize: 12)),
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (imagePath != null)
+                        Image.asset(imagePath, width: 24, height: 24)
+                      else
+                        const Icon(Icons.help_outline, size: 24),
+                      const SizedBox(width: 4),
+                      Text(item, style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
                   selected: isSel,
-                  onSelected:
-                      (sel) => setState(
-                        () => sel ? selected.add(item) : selected.remove(item),
-                      ),
+                  onSelected: (sel) {
+                    setState(() {
+                      sel ? selected.add(item) : selected.remove(item);
+                    });
+                  },
                   backgroundColor: Colors.grey.shade100,
                   selectedColor: Theme.of(
                     context,
@@ -345,8 +393,92 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
     );
   }
 
+  //widget tag
+  Widget _buildTagsInput() {
+    final tagController = TextEditingController();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tags mô tả',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: tagController,
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty && !selTags.contains(value.trim())) {
+              setState(() {
+                selTags.add(value.trim());
+              });
+              tagController.clear();
+            }
+          },
+          decoration: InputDecoration(
+            hintText: 'Nhập tag rồi Enter',
+            hintStyle: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 13,
+              fontWeight: FontWeight.normal,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            labelStyle: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: Theme.of(context).primaryColor,
+                width: 1,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children:
+              selTags.map((tag) {
+                return Chip(
+                  label: Text(tag, style: const TextStyle(fontSize: 12)),
+                  backgroundColor: Colors.grey.shade200,
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  onDeleted: () {
+                    setState(() {
+                      selTags.remove(tag);
+                    });
+                  },
+                );
+              }).toList(),
+        ),
+      ],
+    );
+  }
+
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (selServ.isEmpty || selFeat.isEmpty || selTags.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn đủ Dịch vụ, Tính năng và Tags.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     _formKey.currentState!.save();
 
     final services = selServ.map((e) => SERVICE_MAP[e] ?? e).toList();
@@ -369,12 +501,6 @@ class _RegisterStep1FarmState extends State<RegisterStep1Farm> {
 
     if (response != null && response['id'] != null) {
       final String farmId = response['id'];
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tạo farm thành công!'),
-          backgroundColor: Colors.green,
-        ),
-      );
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => QuestionStep2Screen(farmId: farmId)),

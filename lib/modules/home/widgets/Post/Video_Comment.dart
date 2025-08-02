@@ -165,7 +165,7 @@ class _VideoCommentScreenState extends State<VideoCommentScreen> {
                   height: 0.25,
                   color: Color.fromARGB(255, 216, 215, 215),
                 ),
-                // Banner trả lời (nếu đang reply)
+                // Banner trả lời
                 if (_replyIndex != null)
                   Container(
                     width: double.infinity,
@@ -322,7 +322,7 @@ class _VideoCommentScreenState extends State<VideoCommentScreen> {
 
   Widget _buildReplyItem(CommentVideoModel r) {
     return Padding(
-      padding: const EdgeInsets.only(left: 42, top: 8),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

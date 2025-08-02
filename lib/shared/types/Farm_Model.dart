@@ -1,3 +1,5 @@
+import 'package:farmrole/env/env.dart';
+
 class FarmModel {
   final String id;
   final String name;
@@ -10,13 +12,10 @@ class FarmModel {
   final List<String> features;
   final List<String> tags;
   final double ratings;
-  final int reviewCount;
-  final Coordinates coordinates;
   final OwnerInfo ownerInfo;
   final List<FarmImage> images;
   final String phone;
   final String zalo;
-  final String operationTime;
   final double cultivatedArea;
   final String province;
   final String district;
@@ -35,13 +34,10 @@ class FarmModel {
     required this.features,
     required this.tags,
     required this.ratings,
-    required this.reviewCount,
-    required this.coordinates,
     required this.ownerInfo,
     required this.images,
     required this.phone,
     required this.zalo,
-    required this.operationTime,
     required this.cultivatedArea,
     required this.province,
     required this.district,
@@ -62,17 +58,14 @@ class FarmModel {
       features: List<String>.from(json['features'] ?? []),
       tags: List<String>.from(json['tags'] ?? []),
       ratings: (json['ratings'] ?? 0).toDouble(),
-      reviewCount: json['reviewCount'] ?? 0,
-      coordinates: Coordinates.fromJson(json['coordinates'] ?? {}),
       ownerInfo: OwnerInfo.fromJson(json['ownerInfo'] ?? {}),
       images:
-          (json['images'] as List?)
+          (json['pictures'] as List?)
               ?.map((e) => FarmImage.fromJson(e))
               .toList() ??
           [],
       phone: json['phone'] ?? '',
       zalo: json['zalo'] ?? '',
-      operationTime: json['operationTime'] ?? '',
       cultivatedArea: (json['cultivatedArea'] ?? 0).toDouble(),
       province: json['province'] ?? '',
       district: json['district'] ?? '',
@@ -94,13 +87,10 @@ class FarmModel {
       features: [],
       tags: [],
       ratings: 0,
-      reviewCount: 0,
-      coordinates: const Coordinates(lat: 0, lng: 0),
       ownerInfo: const OwnerInfo(name: '', phone: '', email: ''),
       images: const [],
       phone: '',
       zalo: '',
-      operationTime: '',
       cultivatedArea: 0.0,
       province: '',
       district: '',
@@ -146,13 +136,10 @@ class FarmModel {
       features: features ?? this.features,
       tags: tags ?? this.tags,
       ratings: ratings ?? this.ratings,
-      reviewCount: reviewCount ?? this.reviewCount,
-      coordinates: coordinates ?? this.coordinates,
       ownerInfo: ownerInfo ?? this.ownerInfo,
       images: images ?? this.images,
       phone: phone ?? this.phone,
       zalo: zalo ?? this.zalo,
-      operationTime: operationTime ?? this.operationTime,
       cultivatedArea: cultivatedArea ?? this.cultivatedArea,
       province: province ?? this.province,
       district: district ?? this.district,
@@ -171,13 +158,11 @@ class FarmModel {
       'tags': tags,
       'phone': phone,
       'zalo': zalo,
-      'operationTime': operationTime,
       'cultivatedArea': cultivatedArea,
       'province': province,
       'district': district,
       'ward': ward,
       'street': street,
-      // neu can thiet them rating? reviewCount? ...
     };
   }
 }
@@ -217,20 +202,39 @@ class OwnerInfo {
 }
 
 class FarmImage {
+  final String id;
+  final String farmId;
   final String imageUrl;
   final String description;
+  final bool isDefault;
+  final String uploadedBy;
+  final DateTime createdAt;
 
-  const FarmImage({required this.imageUrl, required this.description});
+  FarmImage({
+    required this.id,
+    required this.farmId,
+    required this.imageUrl,
+    required this.description,
+    required this.isDefault,
+    required this.uploadedBy,
+    required this.createdAt,
+  });
 
   factory FarmImage.fromJson(Map<String, dynamic> json) {
     return FarmImage(
+      id: json['_id'] ?? '',
+      farmId: json['farmId'] ?? '',
       imageUrl: json['imageUrl'] ?? '',
       description: json['description'] ?? '',
+      isDefault: json['isDefault'] ?? false,
+      uploadedBy: json['uploadedBy'] ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
     );
   }
+  static final String _baseUrl = Environment.config.baseUrl;
 
   String getFullUrl() {
     if (imageUrl.startsWith('http')) return imageUrl;
-    return 'https://api-ndolv2.nongdanonline.cc$imageUrl';
+    return '$_baseUrl$imageUrl';
   }
 }

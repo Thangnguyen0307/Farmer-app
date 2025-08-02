@@ -78,34 +78,84 @@ class _UpdatePostScreenState extends State<UpdatePostScreen> {
   }
 
   Future<void> _submitUpdate() async {
+    final title = _titleController.text.trim();
+    final desc = _descController.text.trim();
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+
+    if (title.isEmpty || desc.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: const [
+              Icon(Icons.error_outline, color: Colors.red, size: 20),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Vui lòng nhập đầy đủ tiêu đề và nội dung.'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.grey.shade900,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     try {
       final success = await PostService.updatePost(
         context: context,
         postId: widget.post.id,
-        title: _titleController.text.trim(),
-        description: _descController.text.trim(),
+        title: title,
+        description: desc,
         tags: _tags,
         existingImageUrls: _existingImages,
-        imagesFiles: [], // không cho phép upload ảnh mới
+        imagesFiles: [], // Không cho phép upload ảnh mới.
       );
 
       if (!mounted) return;
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cập nhật bài viết thành công')),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Cập nhật thất bại')));
-      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                success ? Icons.check_circle_outline : Icons.error_outline,
+                color: success ? Colors.green : Colors.red,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  success
+                      ? 'Đã cập nhật bài viết thành công.'
+                      : 'Cập nhật bài viết thất bại. Vui lòng thử lại.',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.grey.shade900,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      if (success) Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: ${e.toString()}')));
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Lỗi: ${e.toString()}')),
+            ],
+          ),
+          backgroundColor: Colors.grey.shade900,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

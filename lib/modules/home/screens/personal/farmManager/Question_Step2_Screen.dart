@@ -3,6 +3,7 @@ import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/home/widgets/Upload_Image/Upload_Farm_image.dart';
 import 'package:flutter/material.dart';
 import 'package:farmrole/modules/auth/services/CRUD_Farm_Service.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class QuestionStep2Screen extends StatefulWidget {
@@ -36,18 +37,52 @@ class _QuestionScreenState extends State<QuestionStep2Screen> {
 
   Future<void> handleSubmit() async {
     final token = context.read<UserProvider>().user?.token ?? '';
+    // Kiểm tra câu hỏi isRequired phải có câu trả lời
+    final missingQuestions =
+        questions.where((q) {
+          if (q['isRequired'] != true) return false;
+          final id = q['_id'];
+          final type = q['type'];
+          if (type == 'single-choice') {
+            return (answers[id] ?? '').toString().isEmpty;
+          } else if (type == 'multi-choice') {
+            return (answers[id] ?? []).isEmpty;
+          } else if (type == 'text') {
+            return (answers[id] ?? '').toString().trim().isEmpty;
+          } else if (type == 'upload') {
+            return (uploadedImages[id] ?? []).isEmpty;
+          }
+          return false;
+        }).toList();
+
+    if (missingQuestions.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng trả lời đầy đủ các câu hỏi bắt buộc.'),
+        ),
+      );
+      return;
+    }
 
     final List<Map<String, dynamic>> formattedAnswers = await Future.wait(
       questions.map((q) async {
         final id = q['_id'];
         final type = q['type'];
+        final allowOtherText = q['allowOtherText'] == true;
 
         List<String> selectedOptions = [];
         String otherText = '';
         List<String> filePaths = [];
 
         if (type == 'single-choice') {
-          selectedOptions = [answers[id] ?? ''];
+          final selected = answers[id] ?? '';
+          selectedOptions = [selected];
+
+          if (allowOtherText &&
+              selected.toLowerCase().contains('khác') &&
+              answers.containsKey('${id}_otherText')) {
+            otherText = answers['${id}_otherText'] ?? '';
+          }
         } else if (type == 'multi-choice') {
           selectedOptions = List<String>.from(answers[id] ?? []);
         } else if (type == 'text') {
@@ -66,6 +101,7 @@ class _QuestionScreenState extends State<QuestionStep2Screen> {
             }),
           );
         }
+
         return {
           "questionId": id,
           "selectedOptions": selectedOptions,
@@ -81,16 +117,6 @@ class _QuestionScreenState extends State<QuestionStep2Screen> {
       formattedAnswers,
     );
     print("Farm ID: ${widget.farmId}");
-    if (success && farmImages.isNotEmpty) {
-      for (var img in farmImages) {
-        await CrudFarmService().uploadFarmImage(
-          context: context,
-          farmId: widget.farmId,
-          imageFile: img,
-          description: "Ảnh người dùng thêm",
-        );
-      }
-    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(success ? "Đăng ký thành công!" : "Thất bại, thử lại."),
@@ -98,7 +124,9 @@ class _QuestionScreenState extends State<QuestionStep2Screen> {
       ),
     );
 
-    if (success && mounted) Navigator.pop(context);
+    if (success && mounted) {
+      context.go('/my-farm');
+    }
   }
 
   @override
@@ -117,70 +145,7 @@ class _QuestionScreenState extends State<QuestionStep2Screen> {
         padding: const EdgeInsets.all(16),
         children: [
           ...questions.map((q) => _buildQuestion(q)).toList(),
-          const SizedBox(height: 20),
-          Text(
-            'Ảnh trang trại (tối đa 5 ảnh)',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ...farmImages.map(
-                (file) => Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.file(
-                        file,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black12, blurRadius: 2),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        onPressed: () {
-                          setState(() => farmImages.remove(file));
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (farmImages.length < 5)
-                GestureDetector(
-                  onTap: () async {
-                    final picker = UploadFarmImage();
-                    final img = await picker.pickImageWithDialog(context);
-                    if (img != null) {
-                      setState(() => farmImages.add(img));
-                    }
-                  },
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(6),
-                      color: Colors.grey.shade200,
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Icon(Icons.add_a_photo, size: 20),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
+
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

@@ -2,10 +2,12 @@ class VideoModel {
   final String id;
   final String title;
   final String youtubeLink;
-  final String localFilePath;
+  final String farmId;
   final String farmName;
+  final String uploadedById;
   final String uploadedBy;
   final String avatar;
+  final String? thumbnail;
   final DateTime createdAt;
   int likeCount;
   bool yourLike;
@@ -18,10 +20,12 @@ class VideoModel {
     required this.id,
     required this.title,
     required this.youtubeLink,
-    required this.localFilePath,
+    required this.farmId,
     required this.farmName,
+    required this.uploadedById,
     required this.uploadedBy,
     required this.avatar,
+    required this.thumbnail,
     required this.createdAt,
     required this.likeCount,
     required this.yourLike,
@@ -35,10 +39,12 @@ class VideoModel {
     String? id,
     String? title,
     String? youtubeLink,
-    String? localFilePath,
+    String? farmId,
     String? farmName,
+    String? uploadedById,
     String? uploadedBy,
     String? avatar,
+    String? thumbnail,
     DateTime? createdAt,
     int? likeCount,
     bool? yourLike,
@@ -51,10 +57,12 @@ class VideoModel {
       id: id ?? this.id,
       title: title ?? this.title,
       youtubeLink: youtubeLink ?? this.youtubeLink,
-      localFilePath: localFilePath ?? this.localFilePath,
+      farmId: farmId ?? this.farmId,
       farmName: farmName ?? this.farmName,
+      uploadedById: uploadedById ?? this.uploadedById,
       uploadedBy: uploadedBy ?? this.uploadedBy,
       avatar: avatar ?? this.avatar,
+      thumbnail: thumbnail ?? this.thumbnail,
       createdAt: createdAt ?? this.createdAt,
       likeCount: likeCount ?? this.likeCount,
       yourLike: yourLike ?? this.yourLike,
@@ -70,14 +78,37 @@ class VideoModel {
       id: json['_id'] ?? '',
       title: json['title'] ?? '',
       youtubeLink: json['youtubeLink'] ?? '',
-      localFilePath: json['localFilePath'] ?? '',
-      farmName: json['farmId']?['name'] ?? 'Không rõ',
-      uploadedBy: json['uploadedBy']?['fullName'] ?? 'Ẩn danh',
-      avatar: json['uploadedBy']?['avatar'] ?? '',
+      farmId:
+          json['farmId'] is Map<String, dynamic>
+              ? json['farmId']['_id'] ?? ''
+              : '',
+      farmName:
+          json['farmId'] is Map<String, dynamic>
+              ? json['farmId']['name'] ?? ''
+              : '',
+      uploadedById:
+          json['uploadedBy'] is Map<String, dynamic>
+              ? json['uploadedBy']['_id'] ?? ''
+              : '',
+      uploadedBy:
+          json['uploadedBy'] is Map<String, dynamic>
+              ? json['uploadedBy']['fullName'] ?? 'Ẩn danh'
+              : 'Ẩn danh',
+      avatar:
+          json['uploadedBy'] is Map<String, dynamic>
+              ? json['uploadedBy']['avatar'] ?? ''
+              : '',
+      thumbnail: json['thumbnailPath'] ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      likeCount: json['likeCount'] ?? 0,
+      likeCount:
+          (json['likeCount'] is String)
+              ? int.tryParse(json['likeCount']) ?? 0
+              : json['likeCount'] ?? 0,
       yourLike: json['yourLike'] ?? false,
-      commentCount: json['commentCount'] ?? 0,
+      commentCount:
+          (json['commentCount'] is String)
+              ? int.tryParse(json['commentCount']) ?? 0
+              : json['commentCount'] ?? 0,
       playlistId: json['playlistId'] ?? '',
       playlistName: json['playlistName'] ?? '',
       status: json['status'] ?? '',
@@ -104,6 +135,7 @@ class Pagination {
 
 class VideoPaginationResponse {
   final List<VideoModel> videos;
+  List<VideoModel> get items => videos;
   final Pagination pagination;
 
   VideoPaginationResponse({required this.videos, required this.pagination});

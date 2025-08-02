@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:farmrole/app/Firebase_Version.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/User_Model.dart';
@@ -33,11 +33,18 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
 
-    _checkLogin();
+    _start();
+  }
+
+  Future<void> _start() async {
+    final allowContinue = await checkForceUpdate(context);
+    if (!allowContinue) return;
+
+    await _checkLogin();
   }
 
   Future<void> _checkLogin() async {
-    await Future.delayed(const Duration(seconds: 5));
+    // await Future.delayed(const Duration(seconds: 5));
 
     final prefs = await SharedPreferences.getInstance();
     final userString = prefs.getString('user');
@@ -108,21 +115,11 @@ class _SplashScreenState extends State<SplashScreen>
                 radius: 60,
                 backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
                 backgroundImage: const AssetImage(
-                  "lib/assets/image/avatar.png",
+                  "lib/assets/image/LogoCut2.png",
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Tên app
-              Text(
-                "Farmer App",
-                style: GoogleFonts.nunito(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
               Text(
                 "Đang khởi động ứng dụng...",
                 style: GoogleFonts.nunito(

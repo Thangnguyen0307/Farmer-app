@@ -1,3 +1,5 @@
+import 'package:farmrole/shared/types/Farm_Model.dart';
+
 class UserModel {
   final String id;
   final String email;
@@ -8,6 +10,9 @@ class UserModel {
   final bool? isActive;
   final String? token;
   final String? refreshToken;
+  final List<FarmModel> farms;
+  final int? totalPoint;
+  final String? rank;
 
   UserModel({
     required this.id,
@@ -19,6 +24,9 @@ class UserModel {
     this.isActive,
     this.token,
     this.refreshToken,
+    this.farms = const [],
+    this.totalPoint,
+    this.rank,
   });
 
   UserModel copyWith({
@@ -31,6 +39,9 @@ class UserModel {
     bool? isActive,
     String? token,
     String? refreshToken,
+    List<FarmModel>? farms,
+    int? totalPoint,
+    String? rank,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -42,22 +53,32 @@ class UserModel {
       isActive: isActive ?? this.isActive,
       token: token ?? this.token,
       refreshToken: refreshToken ?? this.refreshToken,
+      farms: farms ?? this.farms,
+      totalPoint: totalPoint ?? this.totalPoint,
+      rank: rank ?? this.rank,
     );
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final data = json['user'] ?? json;
-
+    final farmsJson = json['farms'] ?? [];
     return UserModel(
-      id: data['id'] ?? '',
+      id: data['id'] ?? data['_id'] ?? '',
       email: data['email'] ?? '',
       fullName: data['fullName'] ?? '',
-      phone: data['phone'],
-      avatar: data['avatar'],
+      phone:
+          (data['phone'] as String?)?.isNotEmpty == true ? data['phone'] : null,
+      avatar:
+          (data['avatar'] as String?)?.isNotEmpty == true
+              ? data['avatar']
+              : null,
       roles: data['role'] is List ? List<String>.from(data['role']) : [],
-      isActive: data['isActive'],
-      token: json['token'] ?? json['accessToken'],
+      isActive: data['isActive'] as bool?,
+      token: json['token'] ?? json['accessToken'] ?? '',
       refreshToken: json['refreshToken'],
+      farms: (farmsJson as List).map((e) => FarmModel.fromJson(e)).toList(),
+      totalPoint: data['totalPoint'] ?? 0,
+      rank: data['rank'] ?? '',
     );
   }
 
@@ -72,6 +93,7 @@ class UserModel {
       'isActive': isActive,
       'token': token,
       'refreshToken': refreshToken,
+      'farms': farms.map((e) => e.toJson()).toList(),
     };
   }
 

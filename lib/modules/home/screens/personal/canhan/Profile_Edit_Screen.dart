@@ -1,11 +1,11 @@
 import 'dart:io';
-
-import 'package:farmrole/modules/auth/services/Auth_Service.dart';
-import 'package:farmrole/modules/auth/state/User_Provider.dart';
-import 'package:farmrole/modules/home/widgets/Upload_Image/Upload_Avatar.dart';
-import 'package:farmrole/shared/types/User_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/shared/types/User_Model.dart';
+import 'package:farmrole/modules/home/widgets/Upload_Image/Upload_Avatar.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -25,7 +25,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     final user = context.read<UserProvider>().user!;
     _fullNameController = TextEditingController(text: user.fullName);
-    _phoneController = TextEditingController(text: user.phone ?? "");
+    _phoneController = TextEditingController(text: user.phone ?? '');
   }
 
   @override
@@ -35,171 +35,218 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() async {
+  Future<void> _saveProfile() async {
+    final fullName = _fullNameController.text.trim();
+    if (fullName.length > 50) {
+      _showError('Họ tên không được vượt quá 50 ký tự.');
+      return;
+    }
+    final phone = _phoneController.text.trim();
+    if (!RegExp(r'^\d{10}$').hasMatch(phone)) {
+      _showError('Số điện thoại phải đủ 10 chữ số.');
+      return;
+    }
+
     final user = context.read<UserProvider>().user!;
     final success = await AuthService().updateUser(
       token: user.token!,
-      fullName: _fullNameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      fullName: fullName,
+      phone: phone,
       avatarPath: _avatarFile?.path,
     );
 
     if (success) {
       await AuthService().myProfile(context);
-      Navigator.pop(context);
+      Navigator.of(context).pop();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Cập nhật thông tin thất bại"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnack('Cập nhật thất bại', isError: true);
     }
+  }
+
+  void _showError(String msg) => showDialog(
+    context: context,
+    builder:
+        (_) => AlertDialog(
+          title: const Text('Lỗi'),
+          content: Text(msg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+  );
+
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red : null,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final color = theme.colorScheme.primary;
     final user = context.watch<UserProvider>().user!;
 
     return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      backgroundColor: theme.colorScheme.background,
+      appBar: AppBar(
+        title: const Text('Chỉnh sửa hồ sơ'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: color,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          children: [
+            // 1. Avatar
+            GestureDetector(
+              onTap: _pickAvatar,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundImage: _avatarProvider(user),
+                  ),
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.camera_alt,
+                      size: 18,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
             ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "Chỉnh sửa hồ sơ",
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+
+            const SizedBox(height: 32),
+
+            // 2. Họ tên
+            _buildField(
+              controller: _fullNameController,
+              hintText: 'Họ tên',
+              icon: Icons.person,
+              color: color,
+            ),
+
+            const SizedBox(height: 16),
+
+            // 3. Số điện thoại
+            _buildField(
+              controller: _phoneController,
+              hintText: 'Số điện thoại',
+              icon: Icons.phone,
+              color: color,
+              keyboardType: TextInputType.phone,
+            ),
+
+            const SizedBox(height: 32),
+
+            // 4. Lưu thay đổi
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      _buildAvatar(user),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _fullNameController,
-                        decoration: const InputDecoration(
-                          labelText: "Họ tên",
-                          prefixIcon: Icon(Icons.person_outline),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: "Số điện thoại",
-                          prefixIcon: Icon(Icons.phone_outlined),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _saveProfile,
-                          icon: const Icon(Icons.save, color: Colors.white),
-                          label: const Text(
-                            "Lưu thay đổi",
-                            style: TextStyle(fontSize: 18),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                child: Text(
+                  'Lưu thay đổi',
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildAvatar(UserModel user) {
-    final image =
-        _avatarFile != null
-            ? FileImage(_avatarFile!)
-            : (user.avatar != null && user.avatar!.isNotEmpty
-                    ? NetworkImage(AuthService.getFullAvatarUrl(user.avatar!))
-                    : const AssetImage("lib/assets/image/avatar.png"))
-                as ImageProvider;
+  void _pickAvatar() async {
+    final picked = await _uploadAvatar.pickImageWithDialog(context);
+    if (picked != null) {
+      final compressed = await _uploadAvatar.compressImage(picked);
+      if (compressed != null) {
+        setState(() => _avatarFile = compressed);
+        final user = context.read<UserProvider>().user!;
+        final ok = await AuthService().uploadAvatarServer(
+          compressed,
+          user.token!,
+          user,
+          context,
+        );
+        _showSnack(
+          ok ? 'Cập nhật ảnh thành công' : 'Tải ảnh thất bại',
+          isError: !ok,
+        );
+        if (ok) await AuthService().myProfile(context);
+      }
+    }
+  }
 
-    return GestureDetector(
-      onTap: () async {
-        final picked = await _uploadAvatar.pickImageWithDialog(context);
-        if (picked != null) {
-          final compressed = await _uploadAvatar.compressImage(picked);
-          if (compressed != null) {
-            setState(() => _avatarFile = compressed);
-            final success = await AuthService().uploadAvatarServer(
-              compressed,
-              user.token!,
-              user,
-              context,
-            );
-            if (success) {
-              await AuthService().myProfile(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Tải ảnh thành công")),
-              );
-            } else {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text("Tải ảnh thất bại")));
-            }
-          }
-        }
-      },
-      child: CircleAvatar(radius: 50, backgroundImage: image),
+  ImageProvider _avatarProvider(UserModel user) {
+    if (_avatarFile != null) return FileImage(_avatarFile!);
+    if (user.avatar?.isNotEmpty == true) {
+      return NetworkImage(AuthService.getFullAvatarUrl(user.avatar!));
+    }
+    return const AssetImage('lib/assets/icon/person_Fill.png');
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    required Color color,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: GoogleFonts.nunito(
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+        color: Colors.black87,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: GoogleFonts.nunito(
+          fontWeight: FontWeight.w300,
+          color: Colors.black45,
+        ),
+        prefixIcon: Icon(icon, color: color, size: 20),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 12,
+        ),
+      ),
     );
   }
 }

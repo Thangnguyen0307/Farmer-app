@@ -1,7 +1,7 @@
 import 'dart:async';
-
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/home/screens/chat/Chat_Room_Drawer.dart';
 import 'package:farmrole/modules/home/widgets/Upload_Image/Upload_Chat_Image.dart';
 import 'package:flutter/material.dart';
 import 'package:farmrole/modules/auth/services/Chat_Service.dart';
@@ -20,10 +20,12 @@ class ChatRoomScreen extends StatefulWidget {
 }
 
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
-  late Future<ChatRoom> _roomFuture;
+  late final Future<ChatRoom?> _roomFuture;
   final List<ChatMessage> _messages = [];
   final _scrollCtrl = ScrollController();
   final _inputCtrl = TextEditingController();
+
+  bool _showScrollToBottomBtn = false;
 
   final _socketSvc = ChatSocketService();
   StreamSubscription<ChatMessage>? _messageSub;
@@ -33,15 +35,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollCtrl.addListener(_onScroll);
+    ChatSocketService().currentRoomId = widget.roomId;
+    DBHelper().resetUnread(widget.roomId);
     _roomFuture = _loadRoom(widget.roomId);
+    _socketSvc.registerReloadMessages((roomId) {
+      if (roomId == widget.roomId) {
+        _reloadMessages();
+      }
+    });
 
     // Lắng nghe tin nhắn mới
     _messageSub = _socketSvc.messages.listen((msg) async {
       if (msg.roomId == widget.roomId) {
         await DBHelper().insertMessage(msg);
+        await DBHelper().resetUnread(widget.roomId);
         if (mounted) {
-          setState(() => _messages.add(msg));
-          _scrollToBottom();
+          setState(() {
+            _messages.add(msg);
+          });
         }
       }
     });
@@ -83,18 +95,43 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
-  Future<ChatRoom> _loadRoom(String roomId) async {
-    final localRoom = await DBHelper().getRoomById(roomId);
+  void _onScroll() {
+    if (!_scrollCtrl.hasClients) return;
+
+    final position = _scrollCtrl.position;
+    final maxScroll = position.maxScrollExtent;
+    final currentScroll = position.pixels;
+    final distanceToBottom = maxScroll - currentScroll;
+
+    setState(() {
+      _showScrollToBottomBtn = distanceToBottom > 400;
+    });
+  }
+
+  Future<ChatRoom?> _loadRoom(String roomId) async {
+    final userId =
+        Provider.of<UserProvider>(context, listen: false).user?.id ?? '';
+    final localRoom = await DBHelper().getRoomById(roomId, userId);
+    if (localRoom == null) {}
+
     if (localRoom != null && localRoom.users.isNotEmpty) {
+      _applyOnlineStatusFromSocket(localRoom);
       _room = localRoom;
       return localRoom;
     }
+    return null;
+  }
 
-    final room = await ChatService.getRoomDetail(context, roomId);
-    _applyOnlineStatusFromSocket(room);
-    await DBHelper().insertRoom(room);
-    _room = room;
-    return room;
+  //reload message
+  void _reloadMessages() async {
+    final localMsgs = await DBHelper().getMessages(widget.roomId);
+    if (mounted) {
+      setState(() {
+        _messages.clear();
+        _messages.addAll(localMsgs);
+      });
+      _scrollToBottom();
+    }
   }
 
   void _sendImage() async {
@@ -115,7 +152,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           userId: user.id,
           fullName: user.fullName,
           avatar: user.avatar,
-          message: '', // hoặc "🖼️ Đã gửi một ảnh"
+          message: '',
           imageUrl: imageUrl,
         );
       }
@@ -128,14 +165,22 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animated = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent + 100,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
+      if (!mounted || !_scrollCtrl.hasClients) return;
+
+      try {
+        if (animated) {
+          _scrollCtrl.animateTo(
+            _scrollCtrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
+        } else {
+          _scrollCtrl.jumpTo(_scrollCtrl.position.maxScrollExtent);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Scroll failed: $e');
       }
     });
   }
@@ -154,6 +199,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
 
     _inputCtrl.clear();
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   void _showImageViewer(
@@ -194,13 +240,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _statusSub?.cancel();
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
+    DBHelper().resetUnread(widget.roomId);
+    ChatSocketService().enterRoom(null);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (_room == null) {
-      return FutureBuilder<ChatRoom>(
+      return FutureBuilder<ChatRoom?>(
         future: _roomFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -212,6 +260,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           if (snapshot.hasError) {
             return Scaffold(
               body: Center(child: Text('Lỗi: ${snapshot.error}')),
+            );
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
+            return Scaffold(
+              appBar: AppBar(
+                // title: const Text('Lỗi phòng chat'),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              body: const Center(
+                child: Text('Phòng không tồn tại hoặc đã bị xoá'),
+              ),
             );
           }
 
@@ -227,159 +289,272 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Widget buildChatUI() {
     final currentUserId = context.read<UserProvider>().user?.id;
     final room = _room!;
-
+    final other = room.users.firstWhere(
+      (u) => u.userId != currentUserId,
+      orElse: () => ChatUser(userId: '', fullName: 'Unknown', avatar: null),
+    );
     return Scaffold(
-      appBar: AppBar(title: Text(room.roomName)),
+      endDrawer: ChatRoomDrawer(room: room),
+
+      appBar: AppBar(
+        actions: [
+          Builder(
+            builder: (ctx) {
+              return IconButton(
+                icon: Image.asset(
+                  'lib/assets/icon/Custom.png',
+                  width: 30,
+                  height: 30,
+                ),
+                onPressed: () {
+                  Scaffold.of(ctx).openEndDrawer();
+                },
+              );
+            },
+          ),
+        ],
+        titleSpacing: 0,
+        title: Builder(
+          builder:
+              (ctx) => GestureDetector(
+                onTap: () {
+                  Scaffold.of(ctx).openEndDrawer();
+                },
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundImage: NetworkImage(
+                        AuthService.getFullAvatarUrl(
+                          room.mode == 'private'
+                              ? other.avatar ?? ''
+                              : room.roomAvatar ?? '',
+                        ),
+                      ),
+                      child:
+                          (room.mode == 'private' && other.avatar == null) ||
+                                  (room.mode != 'private' &&
+                                      room.roomAvatar == null)
+                              ? const Icon(Icons.person)
+                              : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            room.mode == 'private'
+                                ? other.fullName
+                                : room.roomName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (room.mode == 'private')
+                            Text(
+                              other.online ? 'Đang hoạt động' : 'Ngoại tuyến',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    other.online ? Colors.green : Colors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+        ),
+      ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollCtrl,
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              itemCount: _messages.length,
-              itemBuilder: (_, i) {
-                final m = _messages[i];
-                final isMe = currentUserId == m.userId;
-                final localTime = m.createdAt.toLocal();
-                final sender = room.users.firstWhere(
-                  (u) => u.userId == m.userId,
-                  orElse:
-                      () => ChatUser(
-                        userId: '',
-                        fullName: '',
-                        avatar: null,
-                        online: false,
-                      ),
-                );
+            child: Stack(
+              children: [
+                ListView.builder(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 8,
+                  ),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) {
+                    final m = _messages[i];
+                    final isMe = currentUserId == m.userId;
+                    final localTime = m.createdAt.toLocal();
+                    final sender = room.users.firstWhere(
+                      (u) => u.userId == m.userId,
+                      orElse:
+                          () => ChatUser(
+                            userId: '',
+                            fullName: '',
+                            avatar: null,
+                            online: false,
+                          ),
+                    );
 
-                return Align(
-                  alignment:
-                      isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(10),
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isMe
-                              ? Theme.of(context).primaryColor.withOpacity(0.15)
-                              : Colors.grey[200],
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(12),
-                        topRight: const Radius.circular(12),
-                        bottomLeft: Radius.circular(isMe ? 12 : 0),
-                        bottomRight: Radius.circular(isMe ? 0 : 12),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                          isMe
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                      children: [
-                        if (!isMe)
-                          Row(
-                            children: [
-                              Stack(
+                    return Align(
+                      alignment:
+                          isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.all(10),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isMe
+                                  ? Theme.of(
+                                    context,
+                                  ).primaryColor.withOpacity(0.15)
+                                  : Colors.grey[200],
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(12),
+                            topRight: const Radius.circular(12),
+                            bottomLeft: Radius.circular(isMe ? 12 : 0),
+                            bottomRight: Radius.circular(isMe ? 0 : 12),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment:
+                              isMe
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                          children: [
+                            if (!isMe)
+                              Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundImage:
-                                        sender.avatar != null
-                                            ? NetworkImage(
-                                              AuthService.getFullAvatarUrl(
-                                                sender.avatar!,
-                                              ),
-                                            )
-                                            : null,
-                                    child:
-                                        sender.avatar == null
-                                            ? const Icon(Icons.person, size: 14)
-                                            : null,
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color:
-                                            sender.online
-                                                ? Colors.green
-                                                : Colors.grey,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 1,
+                                  Stack(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundImage:
+                                            sender.avatar != null
+                                                ? NetworkImage(
+                                                  AuthService.getFullAvatarUrl(
+                                                    sender.avatar!,
+                                                  ),
+                                                )
+                                                : null,
+                                        child:
+                                            sender.avatar == null
+                                                ? const Icon(
+                                                  Icons.person,
+                                                  size: 14,
+                                                )
+                                                : null,
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color:
+                                                sender.online
+                                                    ? Colors.green
+                                                    : Colors.grey,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 1,
+                                            ),
+                                          ),
                                         ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 6),
+                                  SizedBox(
+                                    width: 140,
+                                    child: Text(
+                                      sender.fullName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(width: 6),
+                            if (!isMe) const SizedBox(height: 4),
+                            if (m.message?.isNotEmpty == true)
                               Text(
-                                sender.fullName,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                m.message!,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            if (m.imageUrl != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    // Lấy tất cả ảnh trong room
+                                    final imageList =
+                                        _messages
+                                            .where(
+                                              (msg) => msg.imageUrl != null,
+                                            )
+                                            .map((msg) => msg.imageUrl!)
+                                            .toList();
+
+                                    final initialIndex = imageList.indexOf(
+                                      m.imageUrl!,
+                                    );
+
+                                    _showImageViewer(
+                                      context,
+                                      imageList,
+                                      initialIndex,
+                                    );
+                                  },
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      AuthService.getFullAvatarUrl(m.imageUrl!),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        if (!isMe) const SizedBox(height: 4),
-                        if (m.message?.isNotEmpty == true)
-                          Text(
-                            m.message!,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        if (m.imageUrl != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: GestureDetector(
-                              onTap: () {
-                                // Lấy tất cả ảnh trong room
-                                final imageList =
-                                    _messages
-                                        .where((msg) => msg.imageUrl != null)
-                                        .map((msg) => msg.imageUrl!)
-                                        .toList();
-
-                                final initialIndex = imageList.indexOf(
-                                  m.imageUrl!,
-                                );
-
-                                _showImageViewer(
-                                  context,
-                                  imageList,
-                                  initialIndex,
-                                );
-                              },
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  AuthService.getFullAvatarUrl(m.imageUrl!),
-                                  fit: BoxFit.cover,
-                                ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${localTime.hour}:${localTime.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
                               ),
                             ),
-                          ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${localTime.hour}:${localTime.minute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
+                    );
+                  },
+                ),
+
+                Positioned(
+                  right: 16,
+                  bottom: 100,
+                  child: AnimatedOpacity(
+                    opacity: _showScrollToBottomBtn ? 1 : 0,
+                    duration: const Duration(milliseconds: 300),
+                    child: FloatingActionButton(
+                      mini: true,
+                      backgroundColor: const Color.fromARGB(41, 162, 249, 213),
+                      onPressed: () => _scrollToBottom(animated: true),
+                      child: const Icon(Icons.arrow_downward),
                     ),
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
           const Divider(
@@ -397,6 +572,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 Expanded(
                   child: TextField(
                     controller: _inputCtrl,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _send(),
                     decoration: InputDecoration(
                       hintText: 'Nhập tin nhắn...',
                       hintStyle: TextStyle(
@@ -418,13 +595,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(shape: BoxShape.circle),
                   child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
                     onPressed: _send,
+                    icon: Image.asset(
+                      'lib/assets/icon/send_Fill.png',
+                      width: 34,
+                      height: 34,
+                    ),
                   ),
                 ),
               ],

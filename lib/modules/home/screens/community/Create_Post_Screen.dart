@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/home/widgets/Post/Create_PostTab.dart';
-import 'package:farmrole/modules/home/widgets/Post/Create_VideoTab.dart';
+import 'package:farmrole/modules/home/widgets/video/Create_VideoTab.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -33,9 +34,9 @@ class _CreatePostScreenState extends State<CreatePostScreen>
             context: context,
             builder:
                 (_) => AlertDialog(
-                  title: const Text('Yêu cầu đăng ký Farmer'),
+                  title: const Text('Yêu cầu đăng ký vài trò Chủ vườn'),
                   content: const Text(
-                    'Bạn cần là thành viên Farmer mới được tạo Video. Bạn có muốn đăng ký ngay bây giờ?',
+                    'Bạn cần vai trò Chủ vườn mới được tạo Video. Bạn có muốn đăng ký ngay bây giờ?',
                   ),
                   actions: [
                     TextButton(
@@ -47,9 +48,10 @@ class _CreatePostScreenState extends State<CreatePostScreen>
                     ),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).pop();
-                        // điều hướng tới screen đăng ký Farmer
-                        Navigator.of(context).pushNamed('/register-farmer');
+                        Navigator.of(context, rootNavigator: true).pop();
+                        Future.delayed(const Duration(milliseconds: 200), () {
+                          Navigator.of(context).pushNamed('/register-farmer');
+                        });
                       },
                       child: const Text('Có'),
                     ),
@@ -77,10 +79,45 @@ class _CreatePostScreenState extends State<CreatePostScreen>
       appBar: AppBar(
         elevation: 0,
         backgroundColor: primary,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        titleSpacing: 0,
         title: const Text(
           'Tạo nội dung mới',
-          style: TextStyle(fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+            fontSize: 18,
+          ),
         ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              context.push('/noti');
+            },
+            icon: Image.asset(
+              'lib/assets/icon/Noti.png',
+              width: 40,
+              height: 40,
+              color: Colors.white,
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              context.push('/chat');
+            },
+            icon: Image.asset(
+              'lib/assets/icon2/chat.png',
+              width: 34,
+              height: 34,
+              color: Colors.white,
+            ),
+          ),
+        ],
+
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Material(

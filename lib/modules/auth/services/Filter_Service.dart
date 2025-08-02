@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:farmrole/env/env.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:farmrole/shared/types/Video_Model.dart';
@@ -8,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 class FilterService {
-  static const String _baseUrl = "https://api-ndolv2.nongdanonline.cc";
+  static final String _baseUrl = Environment.config.baseUrl;
 
   //Search post bang title
   Future<List<PostModel>> searchPosts({

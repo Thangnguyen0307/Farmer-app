@@ -19,10 +19,10 @@ class MainShell extends StatelessWidget {
       label: 'Cộng đồng',
     ),
     _TabInfo(
-      path: '/chat',
-      iconPath: 'lib/assets/icon/chat_White.png',
-      activeIconPath: 'lib/assets/icon/chat.png',
-      label: 'Thông báo',
+      path: '/video-bottom-bar',
+      iconPath: 'lib/assets/icon/Video_White.png',
+      activeIconPath: 'lib/assets/icon/Video_Fill.png',
+      label: 'Video',
     ),
     _TabInfo(
       path: '/Outside',
@@ -43,6 +43,7 @@ class MainShell extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       extendBody: true,
       body: child,
 
@@ -67,7 +68,7 @@ class MainShell extends StatelessWidget {
       ),
 
       bottomNavigationBar: SizedBox(
-        height: 80,
+        height: 60,
         child: ClipRRect(
           child: BottomAppBar(
             shape: const CircularNotchedRectangle(),
@@ -96,6 +97,8 @@ class MainShell extends StatelessWidget {
       onTap: () {
         if (tab.path == '/community') {
           ctx.push('/community');
+        } else if (tab.path == '/video-bottom-bar') {
+          ctx.push('/video-bottom-bar');
         } else {
           ctx.go(tab.path);
         }
@@ -106,8 +109,8 @@ class MainShell extends StatelessWidget {
         height: double.infinity,
         child: Center(
           child: SizedBox(
-            height: 50, // hoặc thử tăng lên 48, 50
-            width: 50,
+            height: 40, // hoặc thử tăng lên 48, 50
+            width: 40,
             child: Image.asset(
               selected ? tab.activeIconPath : tab.iconPath,
               fit: BoxFit.contain,
