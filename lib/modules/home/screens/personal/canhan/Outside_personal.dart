@@ -1,6 +1,8 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/services/Follow_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/home/widgets/Follow/Follow_List_Screen.dart';
 import 'package:farmrole/modules/home/widgets/Post/Post_Tile.dart';
 import 'package:farmrole/modules/home/widgets/video/Video_Tile.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
@@ -285,46 +287,122 @@ class _OutsidePersonalScreenState extends State<OutsidePersonalScreen> {
                               color: Colors.grey.shade600,
                             ),
                           ),
-                          if (user?.rank != null) ...[
+                          if (user?.rank != null ||
+                              user?.totalPoint != null) ...[
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.emoji_events,
-                                  size: 16,
-                                  color: Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  user!.rank!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.orange.shade800,
+                                if (user?.rank != null) ...[
+                                  const Icon(
+                                    Icons.emoji_events,
+                                    size: 16,
+                                    color: Colors.orange,
                                   ),
-                                ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    user!.rank!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.orange.shade800,
+                                    ),
+                                  ),
+                                ],
+                                if (user?.rank != null &&
+                                    user?.totalPoint != null)
+                                  const SizedBox(
+                                    width: 12,
+                                  ), // khoảng cách giữa rank và điểm
+
+                                if (user?.totalPoint != null) ...[
+                                  const Icon(
+                                    Icons.star,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${user!.totalPoint} điểm',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.amber.shade800,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],
-                          if (user?.totalPoint != null) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  size: 16,
-                                  color: Colors.amber,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${user!.totalPoint} điểm',
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () async {
+                                  try {
+                                    final users = await FollowService()
+                                        .fetchFollowing(
+                                          context: context,
+                                          userId: user!.id,
+                                        );
+                                    if (context.mounted) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => FollowListScreen(
+                                                title: 'Đang theo dõi',
+                                                users: users,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    print('Lỗi fetch following: $e');
+                                  }
+                                },
+                                child: Text(
+                                  'Đang theo dõi: ${user?.followCount ?? 0}',
                                   style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.amber.shade800,
+                                    fontSize: 13,
+                                    color: Colors.grey.shade700,
+                                    decoration: TextDecoration.underline,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                              const SizedBox(width: 16),
+                              GestureDetector(
+                                onTap: () async {
+                                  try {
+                                    final users = await FollowService()
+                                        .fetchFollowers(
+                                          context: context,
+                                          userId: user!.id,
+                                        );
+                                    if (context.mounted) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => FollowListScreen(
+                                                title: 'Người theo dõi',
+                                                users: users,
+                                              ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    print('Lỗi fetch followers: $e');
+                                  }
+                                },
+                                child: Text(
+                                  'Người theo dõi: ${user?.followerCount ?? 0}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade700,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -482,7 +560,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Bài viết: $totalPosts',
+                    'Bài viết($totalPosts)',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

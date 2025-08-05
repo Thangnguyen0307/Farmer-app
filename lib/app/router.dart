@@ -11,10 +11,13 @@ import 'package:farmrole/modules/home/screens/community/Create_Post_Screen.dart'
 import 'package:farmrole/modules/home/screens/community/Outside_User_Personal.dart';
 import 'package:farmrole/modules/home/screens/community/Update_Post_Screen.dart';
 import 'package:farmrole/modules/home/screens/community/Search_Post_Screen.dart';
+import 'package:farmrole/modules/home/screens/home/Youtube/Channel_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/Home_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/ReelsPageViewScreen.dart';
+import 'package:farmrole/modules/home/screens/home/VideoListScreen.dart';
 import 'package:farmrole/modules/home/screens/home/Video_Reels/Video_Reels_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/View_Video_Home.dart';
+import 'package:farmrole/modules/home/screens/home/Youtube/Youtube_Player_Screen.dart';
 import 'package:farmrole/modules/home/screens/home/noti/Noti_Screen.dart';
 import 'package:farmrole/modules/home/screens/personal/canhan/Address_Screen.dart';
 import 'package:farmrole/modules/home/screens/personal/canhan/Outside_personal.dart';
@@ -65,6 +68,26 @@ final router = GoRouter(
     GoRoute(
       path: '/forgot-password',
       builder: (_, __) => ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/youtube-category-channel/:categoryId',
+      name: 'youtube-category-channel',
+      builder: (context, state) {
+        final categoryId = state.pathParameters['categoryId']!;
+        return YoutubeChannelListScreen(categoryId: categoryId);
+      },
+    ),
+    GoRoute(
+      path: '/video-list',
+      name: 'videoList',
+      builder: (context, state) => VideoListScreen(),
+    ),
+    GoRoute(
+      path: '/youtube-player',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return YoutubePlayerScreen(videoId: extra['videoId']);
+      },
     ),
     GoRoute(path: '/chat', builder: (_, __) => ChatRoomListScreen()),
     GoRoute(path: '/homehehe', builder: (_, __) => const HomeScreen()),

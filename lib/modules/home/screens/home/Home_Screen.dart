@@ -1,15 +1,21 @@
+import 'package:farmrole/env/env.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Chat_Service.dart';
 import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/services/Filter_Service.dart';
+import 'package:farmrole/modules/auth/services/Home_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
+import 'package:farmrole/modules/auth/state/Chat_Notifier.dart';
 import 'package:farmrole/modules/auth/state/Upload_Manager.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/home/screens/home/VideoListScreen.dart';
+import 'package:farmrole/modules/home/screens/home/Youtube/Youtube_Catelogy_Screen.dart';
 import 'package:farmrole/modules/home/widgets/video/UploadStatusBar.dart';
 import 'package:farmrole/shared/types/Chat_Room_Model.dart';
 import 'package:farmrole/shared/types/DB_Helper.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
 import 'package:farmrole/shared/types/Video_Model.dart';
+import 'package:farmrole/shared/types/Youtube_Catelogy_Model.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
@@ -24,207 +30,59 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<ChatRoom> rooms = [];
-  List<Map<String, dynamic>> tags = [];
   List<VideoModel> videos = [];
-  bool isTagLoading = true;
-  String? selectedTag = 'Tất cả';
   bool isRoomLoading = true;
   bool isVideoLoading = true;
-  int videoPage = 1;
-  final int videoLimit = 10;
-  bool isFetchingMore = false;
-  bool hasMoreVideo = true;
   ScrollController videoScrollController = ScrollController();
   List<PostModel> postsByFirstTag = [];
   bool isPostLoading = true;
-  bool isFilterVisible = false;
-  bool isSearching = false;
-  TextEditingController searchController = TextEditingController();
-  List<VideoModel> previousVideos = [];
-  int currentSearchPage = 1;
-  bool hasMoreSearchVideos = true;
-  String lastSearchKeyword = '';
-  bool noSearchResult = false;
+  List<YoutubeCategoryModel> cate = [];
+  List<PostModel> posts = [];
+  int unreadCount = 0;
   @override
   void initState() {
     super.initState();
-    loadPublicRooms();
-    loadLatestVideos();
+    loadUnreadCount();
+    loadHomepageData();
     loadTopLikedPosts();
-    videoScrollController.addListener(() {
-      if (videoScrollController.position.pixels >=
-          videoScrollController.position.maxScrollExtent - 200) {
-        if (isSearching) {
-          if (hasMoreSearchVideos && !isVideoLoading) {
-            searchVideosByTitle(lastSearchKeyword, isNewSearch: false);
-          }
-        } else {
-          loadMoreVideos();
-        }
-      }
+    final userId = context.read<UserProvider>().user!.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chatNotifier = Provider.of<ChatNotifier>(context, listen: false);
+      ChatSocketService().setNotifier(chatNotifier);
+      chatNotifier.fetchTotalUnread(userId);
     });
   }
 
-  Future<void> loadPublicRooms() async {
-    try {
-      final dbHelper = DBHelper();
-      final allRooms = await dbHelper.getAllRooms();
-
-      final publicRooms =
-          allRooms.where((room) => room.mode == 'public').toList();
-
+  Future<void> loadUnreadCount() async {
+    final count = await DBHelper().getUnreadNotificationsCount();
+    if (mounted) {
       setState(() {
-        rooms = publicRooms;
+        unreadCount = count;
+      });
+    }
+  }
+
+  Future<void> loadHomepageData() async {
+    try {
+      setState(() {
+        isRoomLoading = true;
+        isVideoLoading = true;
+      });
+
+      final homepageData = await HomeService().fetchHomepageData(context);
+      print('🎥 Homepage videos count: ${homepageData.videos.length}');
+      setState(() {
+        videos = homepageData.videos;
+        posts = homepageData.posts;
+        rooms = homepageData.publicRooms;
+        cate = homepageData.youtubeCategories;
         isRoomLoading = false;
+        isVideoLoading = false;
       });
     } catch (e) {
-      print('❌ Lỗi loadPublicRooms: $e');
-      setState(() => isRoomLoading = false);
-    }
-  }
-
-  Future<void> loadLatestVideos({bool isLoadMore = false}) async {
-    if (isLoadMore && (isFetchingMore || !hasMoreVideo)) return;
-
-    if (isLoadMore) {
-      setState(() => isFetchingMore = true);
-    } else {
+      print('❌ Lỗi loadHomepageData: $e');
       setState(() {
-        isVideoLoading = true;
-        videoPage = 1;
-        videos = [];
-        hasMoreVideo = true;
-      });
-    }
-
-    final res = await PostService().fetchLatestVideos(
-      context: context,
-      page: videoPage,
-      limit: videoLimit,
-    );
-    if (!mounted) return;
-    if (res != null) {
-      setState(() {
-        if (isLoadMore) {
-          videos.addAll(res.videos);
-          isFetchingMore = false;
-        } else {
-          videos = res.videos;
-        }
-        hasMoreVideo = (res.videos.length) >= videoLimit;
-        isVideoLoading = false;
-        videoPage = isLoadMore ? videoPage + 1 : 2;
-      });
-    }
-  }
-
-  Future<void> loadMoreVideos() async {
-    if (selectedTag == null || selectedTag == 'Tất cả') {
-      await loadLatestVideos(isLoadMore: true);
-    } else {
-      await loadVideosByTag(selectedTag!, isLoadMore: true);
-    }
-  }
-
-  Future<void> loadTopTags() async {
-    final res = await PostService().fetchTopTags(context);
-    if (!mounted) return;
-    if (res != null) {
-      setState(() {
-        tags =
-            [
-              {'tag': 'Tất cả'},
-            ] +
-            res.map((e) => {'tag': e['tag'].toString()}).toList();
-        isTagLoading = false;
-      });
-      loadLatestVideos();
-    } else {
-      setState(() => isTagLoading = false);
-    }
-  }
-
-  Future<void> loadVideosByTag(String tag, {bool isLoadMore = false}) async {
-    if (isLoadMore && (isFetchingMore || !hasMoreVideo)) return;
-
-    if (!isLoadMore) {
-      setState(() {
-        selectedTag = tag;
-        videos = [];
-        isVideoLoading = true;
-        videoPage = 1;
-        hasMoreVideo = true;
-      });
-    } else {
-      setState(() => isFetchingMore = true);
-    }
-
-    final res = await PostService().fetchVideosByTag(
-      context: context,
-      tag: tag,
-      page: videoPage,
-      limit: videoLimit,
-    );
-
-    setState(() {
-      if (isLoadMore) {
-        videos.addAll(res?.videos ?? []);
-        isFetchingMore = false;
-      } else {
-        videos = res?.videos ?? [];
-        isVideoLoading = false;
-      }
-      hasMoreVideo = (res?.videos.length ?? 0) >= videoLimit;
-      if (!isLoadMore)
-        videoPage = 2;
-      else
-        videoPage++;
-    });
-  }
-
-  Future<void> searchVideosByTitle(
-    String title, {
-    bool isNewSearch = true,
-  }) async {
-    if (isNewSearch) {
-      setState(() {
-        isVideoLoading = true;
-        isFilterVisible = true;
-        selectedTag = null;
-        currentSearchPage = 1;
-        hasMoreSearchVideos = true;
-        lastSearchKeyword = title;
-      });
-    }
-
-    // Lưu lại video cũ nếu là trang đầu tiên
-    final oldVideos = videos;
-
-    final response = await FilterService().searchVideos(
-      context: context,
-      title: title,
-      page: currentSearchPage,
-      limit: 20,
-    );
-
-    if (response != null && response.videos.isNotEmpty) {
-      setState(() {
-        if (isNewSearch) {
-          videos = response.videos;
-        } else {
-          videos.addAll(response.videos);
-        }
-        currentSearchPage++;
-        hasMoreSearchVideos = response.videos.length == 20;
-        isVideoLoading = false;
-      });
-    } else {
-      setState(() {
-        if (isNewSearch) {
-          videos = oldVideos;
-          noSearchResult = true;
-        }
-        hasMoreSearchVideos = false;
+        isRoomLoading = false;
         isVideoLoading = false;
       });
     }
@@ -274,19 +132,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
-          Consumer<UploadManager>(
-            builder: (context, manager, _) {
-              final unseenCompleted =
-                  manager.uploads
-                      .where((e) => e.isCompleted && !e.isSeen)
-                      .length;
+          FutureBuilder<int>(
+            future: DBHelper().getUnreadNotificationsCount(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
 
               return Stack(
                 children: [
                   IconButton(
-                    onPressed: () {
-                      context.read<UploadManager>().markAllCompletedAsSeen();
-                      context.push('/noti');
+                    onPressed: () async {
+                      if (context.mounted) {
+                        context.push('/noti');
+                        await loadUnreadCount();
+                      }
                     },
                     icon: Image.asset(
                       'lib/assets/icon/Noti.png',
@@ -295,13 +153,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  if (unseenCompleted > 0)
+                  if (unreadCount > 0)
                     Positioned(
                       right: 6,
                       top: 6,
                       child: Container(
                         padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
@@ -310,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           minHeight: 20,
                         ),
                         child: Text(
-                          '$unseenCompleted',
+                          '$unreadCount',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -325,15 +183,49 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           SizedBox(width: 4),
-          IconButton(
-            onPressed: () {
-              context.push('/chat');
+          Consumer<ChatNotifier>(
+            builder: (context, notifier, _) {
+              print("🎯 Widget rebuild với unread = ${notifier.totalUnread}");
+              return Stack(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      context.push('/chat');
+                      setState(() {});
+                    },
+                    icon: Image.asset(
+                      'lib/assets/icon2/chat.png',
+                      width: 34,
+                      height: 34,
+                    ),
+                  ),
+                  if (notifier.totalUnread > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Text(
+                          '${notifier.totalUnread}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
-            icon: Image.asset(
-              'lib/assets/icon2/chat.png',
-              width: 34,
-              height: 34,
-            ),
           ),
         ],
       ),
@@ -347,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const UploadStatusBar(),
                     // PHẦN 1: Chat Room
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 0, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -373,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 12),
                           SizedBox(
-                            height: 140,
+                            height: 100,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               padding: const EdgeInsets.symmetric(
@@ -384,34 +276,102 @@ class _HomeScreenState extends State<HomeScreen> {
                                   (_, __) => const SizedBox(width: 12),
                               itemBuilder: (context, i) {
                                 final room = rooms[i];
+
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    // 1. Ảnh nhỏ bo góc
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(0),
-                                      child:
-                                          room.roomAvatar?.isNotEmpty == true
-                                              ? Image.network(
-                                                AuthService.getFullAvatarUrl(
-                                                  room.roomAvatar!,
+                                    /// ✅ ẢNH PHÒNG — BẤM LÀ JOIN
+                                    GestureDetector(
+                                      onTap: () async {
+                                        final roomId = room.roomId;
+                                        try {
+                                          if (room.hasJoin == true) {
+                                            context.push('/chat/room/$roomId');
+                                            return;
+                                          }
+                                          await ChatSocketService().joinRoom(
+                                            roomId,
+                                            userId,
+                                          );
+                                          await ChatSocketService().enterRoom(
+                                            roomId,
+                                          );
+                                          await ChatSocketService()
+                                              .loadOldMessages(roomId);
+
+                                          final updatedRoom =
+                                              await ChatService().getRoomInfo(
+                                                token: token,
+                                                roomId: roomId,
+                                              );
+
+                                          if (updatedRoom != null) {
+                                            await DBHelper().updateRoom(
+                                              updatedRoom,
+                                              userId,
+                                            );
+                                            if (room.hasJoin != true) {
+                                              await DBHelper().setRoomHasJoin(
+                                                room.roomId,
+                                                userId,
+                                              );
+                                              room.hasJoin = true;
+                                            }
+                                          }
+
+                                          context.push('/chat/room/$roomId');
+                                        } catch (e) {
+                                          print('Join room failed: $e');
+                                          await DBHelper().deleteRoom(roomId);
+                                          if (!context.mounted) return;
+                                          showDialog(
+                                            context: context,
+                                            builder:
+                                                (_) => AlertDialog(
+                                                  title: const Text(
+                                                    'Phòng không tồn tại',
+                                                  ),
+                                                  content: const Text(
+                                                    'Phòng chat này đã bị xoá.',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        Navigator.pop(context);
+                                                        loadHomepageData();
+                                                      },
+                                                      child: const Text('OK'),
+                                                    ),
+                                                  ],
                                                 ),
-                                                width: 130,
-                                                height: 70,
-                                                fit: BoxFit.cover,
-                                              )
-                                              : Container(
-                                                width: 130,
-                                                height: 70,
-                                                color: Colors.grey.shade200,
-                                                alignment: Alignment.center,
-                                                child: Icon(
-                                                  Icons.group,
-                                                  size: 24,
-                                                  color: Colors.grey.shade400,
+                                          );
+                                        }
+                                      },
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(0),
+                                        child:
+                                            room.roomAvatar?.isNotEmpty == true
+                                                ? Image.network(
+                                                  AuthService.getFullAvatarUrl(
+                                                    room.roomAvatar!,
+                                                  ),
+                                                  width: 130,
+                                                  height: 70,
+                                                  fit: BoxFit.cover,
+                                                )
+                                                : Container(
+                                                  width: 130,
+                                                  height: 70,
+                                                  color: Colors.grey.shade200,
+                                                  alignment: Alignment.center,
+                                                  child: Icon(
+                                                    Icons.group,
+                                                    size: 24,
+                                                    color: Colors.grey.shade400,
+                                                  ),
                                                 ),
-                                              ),
+                                      ),
                                     ),
                                     const SizedBox(height: 6),
                                     SizedBox(
@@ -428,80 +388,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        final roomId = room.roomId;
-                                        try {
-                                          //da join roi thi vao luon
-                                          if (room.hasJoin == true) {
-                                            context.push('/chat/room/$roomId');
-                                            return;
-                                          }
-                                          //chua join goi joinRoom
-                                          await ChatSocketService().joinRoom(
-                                            roomId,
-                                            userId,
-                                          );
-                                          await ChatSocketService().enterRoom(
-                                            roomId,
-                                          );
-                                          await ChatSocketService()
-                                              .loadOldMessages(roomId);
-
-                                          final updatedRoom =
-                                              await ChatService().getRoomInfo(
-                                                token: token,
-                                                roomId: roomId,
-                                              );
-                                          if (updatedRoom != null) {
-                                            await DBHelper().updateRoom(
-                                              updatedRoom,
-                                              userId,
-                                            );
-                                            if (room.hasJoin != true) {
-                                              await DBHelper().setRoomHasJoin(
-                                                room.roomId,
-                                                userId,
-                                              );
-                                              room.hasJoin = true;
-                                            }
-                                          }
-                                          context.push('/chat/room/$roomId');
-                                        } catch (e) {
-                                          print('Join room failed: $e');
-                                          await DBHelper().deleteRoom(roomId);
-                                          if (!mounted) return;
-                                          showDialog(
-                                            context: context,
-                                            builder:
-                                                (_) => AlertDialog(
-                                                  title: const Text(
-                                                    'Phòng không tồn tại',
-                                                  ),
-                                                  content: const Text(
-                                                    'Phòng chat này đã bị xoá.',
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () {
-                                                        Navigator.pop(context);
-                                                        loadPublicRooms();
-                                                      },
-                                                      child: const Text('OK'),
-                                                    ),
-                                                  ],
-                                                ),
-                                          );
-                                        }
-                                      },
-                                      child: SizedBox(
-                                        height: 35,
-                                        child: Image.asset(
-                                          'lib/assets/icon2/Join.png',
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 );
                               },
@@ -510,13 +396,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-
+                    Divider(height: 1, color: Colors.grey.shade300),
+                    YoutubeCategoryGridSection(categories: cate),
                     Divider(height: 1, color: Colors.grey.shade300),
 
                     // PHẦN 2: Video Reels
                     if (videos.isNotEmpty || isVideoLoading)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -541,160 +428,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: Image.asset(
-                                        'lib/assets/icon/Search3.png',
-                                        width: 30,
-                                        height: 30,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          isSearching = !isSearching;
-                                          if (!isSearching) {
-                                            searchController.clear();
-                                            loadLatestVideos();
-                                          }
-                                        });
-                                      },
+                                TextButton(
+                                  onPressed: () {
+                                    context.push('/video-list');
+                                  },
+                                  child: Text(
+                                    'Xem thêm',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: theme.colorScheme.primary,
                                     ),
-                                    IconButton(
-                                      icon: Image.asset(
-                                        'lib/assets/icon/Filter.png',
-                                        width: 30,
-                                        height: 30,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          isFilterVisible = !isFilterVisible;
-                                        });
-                                        if (isFilterVisible && tags.isEmpty) {
-                                          loadTopTags();
-                                        }
-                                      },
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ],
                             ),
-                            if (isSearching)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Column(
-                                  children: [
-                                    SizedBox(
-                                      height: 36, // Giảm chiều cao tổng thể
-                                      child: TextField(
-                                        controller: searchController,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                        ), // chữ nhỏ hơn
-                                        decoration: InputDecoration(
-                                          hintText: 'Tìm kiếm video...',
-                                          hintStyle: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w300,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                          prefixIcon: Icon(
-                                            Icons.search,
-                                            size: 18,
-                                          ), // icon nhỏ lại
-                                          suffixIcon: IconButton(
-                                            icon: const Icon(
-                                              Icons.clear,
-                                              size: 18,
-                                            ),
-                                            onPressed: () {
-                                              searchController.clear();
-                                              loadLatestVideos();
-                                            },
-                                          ),
-                                          filled: true,
-                                          fillColor: Colors.grey[200],
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                vertical:
-                                                    8, // giảm padding trong input
-                                                horizontal: 12,
-                                              ),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              30,
-                                            ),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                        ),
-                                        onSubmitted: (value) {
-                                          if (value.trim().isNotEmpty) {
-                                            searchVideosByTitle(value.trim());
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                    if (noSearchResult)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 6,
-                                          left: 12,
-                                        ),
-                                        child: Text(
-                                          'Không tìm thấy video phù hợp với "${searchController.text}"',
-                                          style: TextStyle(
-                                            color: Colors.red[700],
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-
-                            if (isFilterVisible)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 1),
-                                child: SizedBox(
-                                  height: 36,
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: tags.length,
-                                    separatorBuilder:
-                                        (_, __) => const SizedBox(width: 12),
-                                    itemBuilder: (_, i) {
-                                      final tag = tags[i];
-                                      final isSelected =
-                                          selectedTag == tag['tag'];
-                                      return GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            selectedTag = tag['tag'];
-                                          });
-                                          if (selectedTag == 'Tất cả') {
-                                            loadLatestVideos();
-                                          } else {
-                                            loadVideosByTag(selectedTag!);
-                                          }
-                                        },
-                                        child: Text(
-                                          '#${tag['tag']}',
-                                          style: TextStyle(
-                                            color:
-                                                isSelected
-                                                    ? Theme.of(
-                                                      context,
-                                                    ).primaryColor
-                                                    : Colors.black,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-
+                            SizedBox(height: 12),
                             isVideoLoading
                                 ? const SizedBox(
                                   height: 270,
@@ -867,7 +615,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-
+                    // Divider(height: 1, color: Colors.grey.shade300),
+                    // buildHorizontalPostSection(),
                     Divider(height: 5, color: Colors.grey.shade300),
 
                     if (!isPostLoading && postsByFirstTag.isNotEmpty)
@@ -1061,6 +810,103 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+    );
+  }
+
+  Widget buildHorizontalPostSection() {
+    if (posts.isEmpty) {
+      return const SizedBox(); // Hoặc loader nếu đang loading
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
+          child: Text(
+            'Bài viết mới nhất',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ),
+        SizedBox(
+          height: 300,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: posts.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              final imageUrl =
+                  post.images.isNotEmpty
+                      ? "${Environment.config.baseUrl}${post.images.first}"
+                      : "https://via.placeholder.com/150";
+
+              return SizedBox(
+                width: 220,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        imageUrl,
+                        height: 150,
+                        width: 220,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      post.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      post.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.favorite_border, size: 16),
+                        const SizedBox(width: 4),
+                        Text("${post.like}"),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.comment, size: 16),
+                        const SizedBox(width: 4),
+                        Text("${post.commentCount}"),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.calendar_today, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          post.createdAt != null
+                              ? post.createdAt.toLocal().toString().substring(
+                                0,
+                                10,
+                              )
+                              : '',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

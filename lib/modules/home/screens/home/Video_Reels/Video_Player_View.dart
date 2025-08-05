@@ -56,6 +56,25 @@ class _VideoPlayerViewState extends State<VideoPlayerView>
     });
   }
 
+  void _rewind10Seconds() async {
+    final currentPosition = await _controller!.position;
+    if (currentPosition != null) {
+      final newPosition = currentPosition - Duration(seconds: 10);
+      _controller!.seekTo(
+        newPosition > Duration.zero ? newPosition : Duration.zero,
+      );
+    }
+  }
+
+  void _forward10Seconds() async {
+    final currentPosition = await _controller!.position;
+    if (currentPosition != null) {
+      final duration = _controller!.value.duration;
+      final newPosition = currentPosition + Duration(seconds: 10);
+      _controller!.seekTo(newPosition < duration ? newPosition : duration);
+    }
+  }
+
   @override
   void didUpdateWidget(VideoPlayerView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -112,12 +131,38 @@ class _VideoPlayerViewState extends State<VideoPlayerView>
               ),
             ),
 
+            if (_showControls)
+              Positioned(
+                left: 40,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.replay_10,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                  onPressed: _rewind10Seconds,
+                ),
+              ),
+
+            if (_showControls)
+              Positioned(
+                right: 40,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.forward_10,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                  onPressed: _forward10Seconds,
+                ),
+              ),
+
             // Volume controls
             if (_showControls)
               Positioned(
-                top: 16,
+                bottom: 6,
                 right: 16,
-                child: Column(
+                child: Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.volume_up, color: Colors.white),

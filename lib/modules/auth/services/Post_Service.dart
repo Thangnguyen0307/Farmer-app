@@ -240,7 +240,10 @@ class PostService {
 
     final jsonData = jsonDecode(resp.body);
     final posts =
-        (jsonData['data'] as List).map((e) => PostModel.fromJson(e)).toList();
+        (jsonData['data'] as List)
+            .map((e) => PostModel.fromJson(e))
+            .where((post) => post.author.id.trim().isNotEmpty)
+            .toList();
     final pagination = post_model.Pagination.fromJson(jsonData['pagination']);
 
     return {'posts': posts, 'pagination': pagination};

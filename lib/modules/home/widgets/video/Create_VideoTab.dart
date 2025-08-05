@@ -30,6 +30,7 @@ class _VideoTabState extends State<VideoTab> {
   String? _selectedFarmId;
   bool _isLoading = true;
   bool _isPickingVideo = false;
+  bool isProcessing = false;
 
   final UploadImagePost _uploader = UploadImagePost();
 
@@ -76,6 +77,7 @@ class _VideoTabState extends State<VideoTab> {
   }
 
   Future<void> _pickVideo() async {
+    if (_uploading) return;
     setState(() {
       _isPickingVideo = true;
     });
@@ -151,13 +153,6 @@ class _VideoTabState extends State<VideoTab> {
     }
   }
 
-  Future<void> _pickThumbnail() async {
-    final picked = await _uploader.pickImageWithDialog(context);
-    if (picked != null) {
-      setState(() => _thumbnailFile = File(picked.path));
-    }
-  }
-
   //ham lay do dai video
   Future<int> _getVideoDurationInSeconds(String path) async {
     final videoPlayerController = VideoPlayerController.file(File(path));
@@ -171,6 +166,10 @@ class _VideoTabState extends State<VideoTab> {
     final user = context.read<UserProvider>().user;
     final farms = context.read<FarmProvider>().farms;
     final manager = context.read<UploadManager>();
+
+    setState(() {
+      _uploading = true;
+    });
 
     if (_selectedFarmId == null ||
         _titleController.text.trim().isEmpty ||
@@ -238,6 +237,7 @@ class _VideoTabState extends State<VideoTab> {
           _videoFile = null;
           _thumbnailFile = null;
           _error = null;
+          _uploading = false;
         });
 
         showDialog(
@@ -276,6 +276,9 @@ class _VideoTabState extends State<VideoTab> {
           ),
         );
       }
+      setState(() {
+        _uploading = false;
+      });
     }
   }
 
@@ -491,36 +494,39 @@ class _VideoTabState extends State<VideoTab> {
                 ),
               ),
             ),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _uploading ? null : _uploadVideo,
-              style: ElevatedButton.styleFrom(
-                elevation: 0,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          Opacity(
+            opacity: _uploading ? 0.6 : 1.0, // mờ đi khi đang upload
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _uploading ? null : _uploadVideo,
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
+                child:
+                    _uploading
+                        ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : const Text(
+                          'Đăng video',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
               ),
-              child:
-                  _uploading
-                      ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                      : const Text(
-                        'Đăng video',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
             ),
           ),
         ],

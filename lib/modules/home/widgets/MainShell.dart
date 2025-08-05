@@ -1,3 +1,4 @@
+import 'package:farmrole/modules/home/widgets/Ads/BannerAdWidget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -42,50 +43,56 @@ class MainShell extends StatelessWidget {
     final currentIdx = _currentIndex(context);
     final theme = Theme.of(context);
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      extendBody: true,
-      body: child,
-
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Container(
-        height: 55,
-        width: 55,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            colors: [
-              Color.fromARGB(255, 13, 171, 32),
-              Color.fromARGB(255, 2, 115, 25),
-            ],
-          ),
-          border: Border.all(color: Colors.white, width: 2),
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.add, size: 28, color: Colors.white),
-          onPressed: () => context.push('/create'),
-        ),
-      ),
-
-      bottomNavigationBar: SizedBox(
-        height: 60,
-        child: ClipRRect(
-          child: BottomAppBar(
-            shape: const CircularNotchedRectangle(),
-            notchMargin: 6,
-            color: theme.colorScheme.primary,
-            child: Row(
-              children: [
-                Expanded(child: _navBtn(context, 0, currentIdx)),
-                Expanded(child: _navBtn(context, 1, currentIdx)),
-                const SizedBox(width: 60), // chừa chỗ FAB
-                Expanded(child: _navBtn(context, 2, currentIdx)),
-                Expanded(child: _navBtn(context, 3, currentIdx)),
-              ],
+    return Column(
+      children: [
+        Expanded(
+          child: Scaffold(
+            resizeToAvoidBottomInset: false,
+            extendBody: true,
+            body: child,
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerDocked,
+            floatingActionButton: Container(
+              height: 55,
+              width: 55,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [
+                    Color.fromARGB(255, 13, 171, 32),
+                    Color.fromARGB(255, 2, 115, 25),
+                  ],
+                ),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.add, size: 28, color: Colors.white),
+                onPressed: () => context.push('/create'),
+              ),
+            ),
+            bottomNavigationBar: SizedBox(
+              height: 60,
+              child: ClipRRect(
+                child: BottomAppBar(
+                  shape: const CircularNotchedRectangle(),
+                  notchMargin: 6,
+                  color: theme.colorScheme.primary,
+                  child: Row(
+                    children: [
+                      Expanded(child: _navBtn(context, 0, currentIdx)),
+                      Expanded(child: _navBtn(context, 1, currentIdx)),
+                      const SizedBox(width: 60),
+                      Expanded(child: _navBtn(context, 2, currentIdx)),
+                      Expanded(child: _navBtn(context, 3, currentIdx)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-      ),
+        const BannerAdWidget(),
+      ],
     );
   }
 

@@ -18,7 +18,7 @@ class DBHelper {
     final path = join(await getDatabasesPath(), 'chat_app.db');
     _db = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -53,6 +53,17 @@ class DBHelper {
         userId TEXT
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        videoId TEXT,
+        title TEXT,
+        note TEXT,
+        createdAt TEXT,
+        unread INTEGER DEFAULT 1
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -65,6 +76,17 @@ class DBHelper {
       await db.execute(
         'ALTER TABLE chat_rooms ADD COLUMN hasNewMessage INTEGER DEFAULT 0',
       );
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          videoId TEXT,
+          title TEXT,
+          note TEXT,
+          createdAt TEXT
+        )
+    ''');
     }
   }
 
@@ -329,15 +351,21 @@ class DBHelper {
     );
   }
 
-  // Future<void> setHasNewMessageFalse(String roomId) async {
-  //   final database = await db;
-  //   await database.update(
-  //     'chat_rooms',
-  //     {'hasNewMessage': 0},
-  //     where: 'roomId = ?',
-  //     whereArgs: [roomId],
-  //   );
-  // }
+  //Tinh tong cac thong bao moi
+  Future<int> getTotalUnreadCount(String userId) async {
+    final database = await db;
+    final result = await database.rawQuery(
+      '''
+    SELECT SUM(unreadCount) as total 
+    FROM chat_rooms 
+    WHERE userId = ?
+    ''',
+      [userId],
+    );
+
+    final total = result.first['total'];
+    return (total == null) ? 0 : total as int;
+  }
 
   Future<Map<String, dynamic>?> getUserById(String userId) async {
     final database = await db;
@@ -356,6 +384,49 @@ class DBHelper {
     }
 
     return null;
+  }
+
+  // ================== NOTI ==================
+  Future<void> insertNotification({
+    required String videoId,
+    required String title,
+    required String note,
+  }) async {
+    final database = await db;
+    await database.insert('notifications', {
+      'videoId': videoId,
+      'title': title,
+      'note': note,
+      'createdAt': DateTime.now().toIso8601String(),
+      'unread': 1,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> getAllNotifications() async {
+    final database = await db;
+    return await database.query('notifications', orderBy: 'createdAt DESC');
+  }
+
+  //tinh tong unread cua noti
+  Future<int> getUnreadNotificationsCount() async {
+    final database = await db;
+    final result = await database.rawQuery('''
+    SELECT COUNT(*) as count FROM notifications WHERE unread = 1
+  ''');
+
+    final count = result.first['count'];
+    return (count == null) ? 0 : count as int;
+  }
+
+  //đánh dấu 1 noti là đã đọc rồi
+  Future<void> markNotificationAsRead(int id) async {
+    final database = await db;
+    await database.update(
+      'notifications',
+      {'unread': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // ================== UTILS ==================

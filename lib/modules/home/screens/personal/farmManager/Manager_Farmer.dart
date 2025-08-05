@@ -1,11 +1,13 @@
+import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
+import 'package:farmrole/modules/auth/state/Chat_Notifier.dart';
 import 'package:farmrole/modules/home/screens/chat/Chat_Screen.dart';
 import 'package:farmrole/modules/home/screens/personal/farmManager/MyFarm_Screen.dart';
 import 'package:farmrole/modules/home/screens/personal/farmManager/Register_Step1_Farm.dart';
+import 'package:farmrole/modules/home/widgets/Ads/BannerAdWidget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
-import 'package:farmrole/modules/home/widgets/AppDrawer.dart';
 import 'package:farmrole/modules/home/widgets/Welcome_Card.dart';
 import 'package:farmrole/modules/home/widgets/DashBoard_Card.dart';
 
@@ -57,6 +59,16 @@ class _HomeScreenState extends State<ManagerFarmer> {
       "onTap": (BuildContext context) {},
     },
   ];
+
+  @override
+  void initState() {
+    final userId = context.read<UserProvider>().user!.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chatNotifier = Provider.of<ChatNotifier>(context, listen: false);
+      ChatSocketService().setNotifier(chatNotifier);
+      chatNotifier.fetchTotalUnread(userId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,16 +148,50 @@ class _HomeScreenState extends State<ManagerFarmer> {
                       color: Colors.white,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      context.push('/chat');
+                  Consumer<ChatNotifier>(
+                    builder: (context, notifier, _) {
+                      print(
+                        "🎯 Widget rebuild với unread = ${notifier.totalUnread}",
+                      );
+                      return Stack(
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              context.push('/chat'); // không reset gì cả
+                            },
+                            icon: Image.asset(
+                              'lib/assets/icon2/chat.png',
+                              width: 34,
+                              height: 34,
+                            ),
+                          ),
+                          if (notifier.totalUnread > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 20,
+                                  minHeight: 20,
+                                ),
+                                child: Text(
+                                  '${notifier.totalUnread}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
                     },
-                    icon: Image.asset(
-                      'lib/assets/icon2/chat.png',
-                      width: 34,
-                      height: 34,
-                      color: Colors.white,
-                    ),
                   ),
                 ],
               ),
@@ -183,6 +229,9 @@ class _HomeScreenState extends State<ManagerFarmer> {
             ),
           ),
         ),
+        const SizedBox(height: 8),
+        const BannerAdWidget(),
+        const SizedBox(height: 8),
       ],
     );
   }

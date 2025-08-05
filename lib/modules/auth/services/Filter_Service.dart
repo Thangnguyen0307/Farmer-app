@@ -38,6 +38,7 @@ class FilterService {
     }
     return (json['data'] as List)
         .map((e) => PostModel.fromJson(e as Map<String, dynamic>))
+        .where((post) => post.author.id.trim().isNotEmpty)
         .toList();
   }
 
@@ -85,7 +86,11 @@ class FilterService {
     if (data is! Map || data['data'] is! List) {
       throw Exception('Dữ liệu trả về không hợp lệ');
     }
-    return (data['data'] as List).map((e) => PostModel.fromJson(e)).toList();
+
+    return (data['data'] as List)
+        .map((e) => PostModel.fromJson(e))
+        .where((post) => post.author.id.trim().isNotEmpty)
+        .toList();
   }
 
   //search video by title

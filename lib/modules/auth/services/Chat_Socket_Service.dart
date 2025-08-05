@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:farmrole/app/router.dart';
 import 'package:farmrole/env/env.dart';
+import 'package:farmrole/modules/auth/state/Chat_Notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:farmrole/shared/types/Chat_Room_Model.dart';
@@ -39,7 +40,22 @@ class ChatSocketService {
 
   Function(ChatRoom)? _onRoomReadyCallback;
 
+  //lay title trong text ma backend trả
+  String extractTitle(String text) {
+    final regex = RegExp(r'"(.*?)"');
+    final match = regex.firstMatch(text);
+    return match != null ? match.group(1)! : '';
+  }
+
+  //cap nhat tong unread mess
+  Function()? onUnreadChanged;
+  ChatNotifier? _notifier;
+
   final String _baseUrl = Environment.config.baseUrl;
+
+  void setNotifier(ChatNotifier notifier) {
+    _notifier = notifier;
+  }
 
   void registerReloadMessages(Function(String roomId) callback) {
     _reloadMessagesCallback = callback;
@@ -116,12 +132,17 @@ class ChatSocketService {
         }
 
         if (type == 'chatMessage') {
-          print(
-            "📩 [chatMessage] received: ${d['message']} | room=${d['room']}",
-          );
           final m = ChatMessage.fromJsonSafe(d);
           _messageController.add(m);
           await DBHelper().insertMessage(m);
+          if (m.roomId == currentRoomId) {
+            debugPrint('👁️ In current room → resetUnread');
+            await DBHelper().resetUnread(m.roomId);
+          } else {
+            debugPrint('🔕 Not in current room → increaseUnread');
+            await DBHelper().increaseUnread(m.roomId);
+            _notifier?.fetchTotalUnread(userId);
+          }
         }
 
         if (type == 'userStatusUpdate') {
@@ -170,6 +191,7 @@ class ChatSocketService {
           }
           if (total > 0) {
             await DBHelper().setUnread(roomId, total);
+            onUnreadChanged?.call();
           }
           _reloadMessagesCallback?.call(roomId);
         }
@@ -209,6 +231,28 @@ class ChatSocketService {
                   ),
             );
           }
+        }
+        if (type == 'videoPublic') {
+          final videoId = d['videoId'];
+          final text = d['text'];
+          final title = extractTitle(text);
+          final note = 'Video $title của bạn đã được duyệt';
+          await DBHelper().insertNotification(
+            videoId: videoId,
+            title: title,
+            note: note,
+          );
+        }
+        if (type == 'videoUploaded') {
+          final videoId = d['videoId'];
+          final text = d['text'];
+          final title = extractTitle(text);
+          final note = 'Video $title đã được tải lên và đang chờ xử lý.';
+          await DBHelper().insertNotification(
+            videoId: videoId,
+            title: title,
+            note: note,
+          );
         }
       } catch (e) {
         debugPrint('❌ Socket message parse error: $e');

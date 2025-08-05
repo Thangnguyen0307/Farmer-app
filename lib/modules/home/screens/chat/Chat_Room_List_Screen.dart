@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:intl/intl.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
-import 'package:farmrole/modules/auth/services/Chat_Service.dart';
 import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/shared/types/Chat_Room_Model.dart';
@@ -33,14 +32,14 @@ class _ChatRoomListScreenState extends State<ChatRoomListScreen>
     _messageSub = ChatSocketService().messages.listen((msg) async {
       final currentRoomId = ChatSocketService().currentRoomId;
 
-      if (msg.roomId == currentRoomId) {
-        print('👁️ In current room → resetUnread');
-        await DBHelper().resetUnread(msg.roomId);
-      } else {
-        print('🔕 Not in current room → increaseUnread');
-        await DBHelper().increaseUnread(msg.roomId);
-        ChatSocketService().needReloadRooms = true;
-      }
+      // if (msg.roomId == currentRoomId) {
+      //   print('👁️ In current room → resetUnread');
+      //   await DBHelper().resetUnread(msg.roomId);
+      // } else {
+      //   print('🔕 Not in current room → increaseUnread');
+      //   await DBHelper().increaseUnread(msg.roomId);
+      //   ChatSocketService().needReloadRooms = true;
+      // }
       print('[Socket] CurrentRoomId: ${ChatSocketService().currentRoomId}');
       print('[Socket] Message from roomId: ${msg.roomId}');
       final index = _rooms.indexWhere((r) => r.room.roomId == msg.roomId);

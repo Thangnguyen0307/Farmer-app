@@ -1,10 +1,38 @@
+import 'package:farmrole/shared/types/DB_Helper.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:farmrole/modules/auth/state/Upload_Manager.dart';
 
-class NotiScreen extends StatelessWidget {
+class NotiScreen extends StatefulWidget {
   const NotiScreen({super.key});
+
+  @override
+  State<NotiScreen> createState() => _NotiScreenState();
+}
+
+class _NotiScreenState extends State<NotiScreen> {
+  List<Map<String, dynamic>> notifications = [];
+
+  String _formatTime(String isoTime) {
+    try {
+      final dateTime = DateTime.parse(isoTime);
+      return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final notis = await DBHelper().getAllNotifications();
+    setState(() {
+      notifications = notis;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,78 +59,106 @@ class NotiScreen extends StatelessWidget {
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
         ),
       ),
-      body: Consumer<UploadManager>(
-        builder: (context, manager, _) {
-          final completed =
-              manager.uploads.where((u) => u.isCompleted).toList();
-
-          if (completed.isEmpty) {
-            return Center(
-              child: Text(
-                'Chưa có thông báo nào',
-                style: GoogleFonts.nunito(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.grey,
+      body:
+          notifications.isEmpty
+              ? Center(
+                child: Text(
+                  'Chưa có thông báo nào',
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.grey,
+                  ),
                 ),
-              ),
-            );
-          }
+              )
+              : ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                itemCount: notifications.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 1),
+                itemBuilder: (context, index) {
+                  final noti = notifications[index];
+                  final isUnread = noti['unread'] == 1;
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            itemCount: completed.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final task = completed[index];
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: primary, size: 24),
-                    const SizedBox(width: 12),
-                    Expanded(
+                  return GestureDetector(
+                    onTap: () async {
+                      if (isUnread) {
+                        await DBHelper().markNotificationAsRead(noti['id']);
+                        setState(() {
+                          final updatedNoti = Map<String, dynamic>.from(
+                            notifications[index],
+                          );
+                          updatedNoti['unread'] = 0;
+
+                          notifications = List<Map<String, dynamic>>.from(
+                            notifications,
+                          );
+                          notifications[index] = updatedNoti;
+                        });
+                      }
+                      // TODO: Nếu muốn mở chi tiết thì làm ở đây
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isUnread ? Colors.grey.shade100 : Colors.white,
+                        borderRadius: BorderRadius.circular(0),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            task.title,
-                            style: GoogleFonts.nunito(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                isUnread
+                                    ? Icons.notifications_active
+                                    : Icons.notifications_none,
+                                color: isUnread ? primary : Colors.grey,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      noti['title'] ?? '',
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      noti['note'] ?? '',
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w300,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Đã đăng tải thành công',
-                            style: GoogleFonts.nunito(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.black54,
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Text(
+                              _formatTime(noti['createdAt']),
+                              style: GoogleFonts.nunito(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
+                  );
+                },
+              ),
     );
   }
 }

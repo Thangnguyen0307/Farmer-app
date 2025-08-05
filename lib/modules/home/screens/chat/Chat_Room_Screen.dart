@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/state/Chat_Notifier.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
 import 'package:farmrole/modules/home/screens/chat/Chat_Room_Drawer.dart';
 import 'package:farmrole/modules/home/widgets/Upload_Image/Upload_Chat_Image.dart';
@@ -24,13 +25,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final List<ChatMessage> _messages = [];
   final _scrollCtrl = ScrollController();
   final _inputCtrl = TextEditingController();
-
   bool _showScrollToBottomBtn = false;
-
   final _socketSvc = ChatSocketService();
   StreamSubscription<ChatMessage>? _messageSub;
   StreamSubscription<Map<String, dynamic>>? _statusSub;
   ChatRoom? _room;
+  late final String userId;
+  late final ChatNotifier notifier;
 
   @override
   void initState() {
@@ -235,6 +236,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    userId = Provider.of<UserProvider>(context, listen: false).user!.id;
+    notifier = Provider.of<ChatNotifier>(context, listen: false);
+  }
+
+  @override
   void dispose() {
     _messageSub?.cancel();
     _statusSub?.cancel();
@@ -242,6 +250,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _scrollCtrl.dispose();
     DBHelper().resetUnread(widget.roomId);
     ChatSocketService().enterRoom(null);
+    notifier.fetchTotalUnread(userId);
     super.dispose();
   }
 

@@ -1,7 +1,9 @@
+import 'package:farmrole/modules/home/widgets/Ads/NativeAdWidget.dart';
 import 'package:flutter/material.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/modules/home/widgets/Post/Post_Community.dart';
 import 'package:farmrole/shared/types/Post_Model.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class CommunityPostTab extends StatefulWidget {
   const CommunityPostTab({Key? key}) : super(key: key);
@@ -13,6 +15,8 @@ class _CommunityPostTabState extends State<CommunityPostTab> {
   final _service = PostService();
 
   List<PostModel> _posts = [];
+  List<NativeAd> _ads = [];
+  List<bool> _adsLoaded = [];
   Pagination? _pag;
   bool _loading = false, _error = false;
 
@@ -41,6 +45,7 @@ class _CommunityPostTabState extends State<CommunityPostTab> {
           _posts.addAll(r['posts']);
         _pag = r['pagination'];
       });
+      _ensureEnoughAds();
     } catch (_) {
       setState(() => _error = true);
     } finally {
@@ -56,6 +61,41 @@ class _CommunityPostTabState extends State<CommunityPostTab> {
       _loadPage(_pag!.page + 1);
     }
     return false;
+  }
+
+  //load ads
+  void _ensureEnoughAds() {
+    final expectedAdCount = (_posts.length ~/ 5); // mỗi 5 post 1 ad
+    final missing = expectedAdCount - _ads.length;
+    for (int i = 0; i < missing; i++) {
+      final index = _ads.length;
+      final ad = NativeAd(
+        adUnitId: 'ca-app-pub-3940256099942544/2247696110',
+        factoryId: 'native_ad_factory',
+        request: const AdRequest(),
+        listener: NativeAdListener(
+          onAdLoaded: (ad) {
+            setState(() {
+              _adsLoaded[index] = true;
+            });
+          },
+          onAdFailedToLoad: (ad, error) {
+            ad.dispose();
+            print('❌ NativeAd preload failed: $error');
+          },
+        ),
+      )..load();
+      _ads.add(ad);
+      _adsLoaded.add(false);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final ad in _ads) {
+      ad.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -87,16 +127,30 @@ class _CommunityPostTabState extends State<CommunityPostTab> {
           if (_posts.isNotEmpty)
             SliverList(
               delegate: SliverChildBuilderDelegate((ctx, i) {
+                final isAdIndex = (i + 1) % 6 == 0;
+                if (isAdIndex) {
+                  final adIndex = (i + 1) ~/ 6 - 1;
+                  if (adIndex < _ads.length && _adsLoaded[adIndex]) {
+                    return Container(
+                      key: ValueKey('ad_$i'),
+                      height: 351,
+                      child: NativeAdWidget(ad: _ads[adIndex]),
+                    );
+                  } else {
+                    return const SizedBox(height: 351);
+                  }
+                }
+
+                final actualIndex = i - (i ~/ 6);
+                final post = _posts[actualIndex];
                 return Column(
                   children: [
-                    PostCommunity(post: _posts[i]),
+                    PostCommunity(post: post),
                     const Divider(height: 1, color: Colors.grey),
                   ],
                 );
-              }, childCount: _posts.length),
+              }, childCount: _posts.length + (_posts.length ~/ 5)),
             ),
-
-          // Spinner ở cuối nếu đang load trang kế
           if (_loading)
             const SliverToBoxAdapter(
               child: Padding(
@@ -105,7 +159,6 @@ class _CommunityPostTabState extends State<CommunityPostTab> {
               ),
             ),
 
-          // Spacer ở cuối nếu đã load hết
           if (!_loading && _pag != null && _pag!.page >= _pag!.totalPages)
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],

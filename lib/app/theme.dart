@@ -24,6 +24,28 @@ class AppTheme {
         bodySmall: GoogleFonts.nunito(fontWeight: FontWeight.normal),
       ),
       useMaterial3: true,
+      dialogTheme: DialogTheme(
+        backgroundColor: Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        titleTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+        contentTextStyle: const TextStyle(fontSize: 14, color: Colors.black54),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color.fromARGB(255, 5, 207, 120),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          minimumSize: Size.zero,
+        ),
+      ),
     );
   }
 

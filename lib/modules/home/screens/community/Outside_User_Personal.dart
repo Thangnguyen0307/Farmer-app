@@ -1,7 +1,10 @@
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
+import 'package:farmrole/modules/auth/services/Follow_Service.dart';
 import 'package:farmrole/modules/auth/services/Personal_Service.dart';
 import 'package:farmrole/modules/auth/services/Post_Service.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
+import 'package:farmrole/modules/home/widgets/Follow/Follow_Button.dart';
+import 'package:farmrole/modules/home/widgets/Follow/Follow_List_Screen.dart';
 import 'package:farmrole/modules/home/widgets/Post/Comment_Option_Menu.dart';
 import 'package:farmrole/modules/home/widgets/Post/Post_Personal.dart';
 import 'package:farmrole/modules/home/widgets/Post/Report_User.dart';
@@ -9,9 +12,9 @@ import 'package:farmrole/modules/home/widgets/video/Chat_Private_Video_Button.da
 import 'package:farmrole/modules/home/widgets/video/Video_Tile.dart';
 import 'package:farmrole/modules/home/widgets/Farm/Farm_Tile.dart';
 import 'package:farmrole/shared/types/Farm_Model.dart';
-import 'package:farmrole/shared/types/Post_Model.dart';
+import 'package:farmrole/shared/types/Post_Model.dart' as post;
 import 'package:farmrole/shared/types/User_Model.dart';
-import 'package:farmrole/shared/types/Video_Model.dart' as video_model;
+import 'package:farmrole/shared/types/Video_Model.dart' as video;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -31,12 +34,12 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
   final _personal = PersonalService();
   final _postService = PostService();
 
-  List<PostModel> _posts = [];
-  List<video_model.VideoModel> _videos = [];
+  List<post.PostModel> _posts = [];
+  List<video.VideoModel> _videos = [];
   List<FarmModel> _farms = [];
 
-  Pagination? _pagination;
-  video_model.Pagination? _videoPagination;
+  post.Pagination? _pagination;
+  video.Pagination? _videoPagination;
 
   bool _loading = false, _hasError = false;
   UserModel? _outsideUser;
@@ -67,6 +70,7 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
         _farms = user?.farms ?? [];
       });
       print('Fetched farms: ${user?.farms}');
+      print('Fetched yourFollow: ${user?.yourFollow}');
     } catch (e, stacktrace) {
       print('>>> ERROR fetchUserInfoOnly: $e');
       print(stacktrace);
@@ -112,14 +116,14 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
         limit: 10,
       );
 
-      final author = AuthorModel(
+      final author = post.AuthorModel(
         id: _outsideUser!.id,
         fullName: _outsideUser!.fullName,
         avatar: _outsideUser!.avatar ?? '',
       );
 
       final newPosts =
-          (r['posts'] as List<PostModel>)
+          (r['posts'] as List<post.PostModel>)
               .map((p) => p.copyWith(author: author))
               .toList();
 
@@ -179,17 +183,18 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
-
     final avatarProvider =
         (_outsideUser?.avatar?.isNotEmpty == true)
             ? NetworkImage(AuthService.getFullAvatarUrl(_outsideUser!.avatar!))
-            : const AssetImage('lib/assets/image/avatar.png') as ImageProvider;
+            : const AssetImage('lib/assets/icon/person_Fill.png')
+                as ImageProvider;
 
     final name = _outsideUser?.fullName ?? 'Người dùng';
     final email = _outsideUser?.email ?? '';
     final currentUser = context.read<UserProvider>().user;
+    final token = context.read<UserProvider>().user?.token;
     final isMySelf = widget.userId == currentUser?.id;
-
+    print('👉 Pushing to followers with userId: ${_outsideUser?.id}');
     if (_hasError && _posts.isEmpty && _currentTab == OutsideUserTab.posts) {
       return Scaffold(
         appBar: AppBar(title: const Text('Trang cá nhân')),
@@ -214,7 +219,11 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
             snap: true,
             backgroundColor: primary,
             foregroundColor: Colors.white,
-            title: Text(name),
+            centerTitle: true,
+            title: Text(
+              "Trang cá nhân",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             actions: [
               if (!isMySelf)
                 ChatPrivateVideoButton(
@@ -242,7 +251,6 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 4),
                         Text(
                           email,
                           style: TextStyle(
@@ -250,46 +258,135 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
                             color: Colors.grey.shade600,
                           ),
                         ),
-                        if (_outsideUser?.rank != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.emoji_events,
-                                size: 16,
-                                color: Colors.orange,
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (_outsideUser?.rank != null)
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.emoji_events,
+                                    size: 16,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _outsideUser!.rank!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.orange.shade800,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _outsideUser!.rank!,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.orange.shade800,
-                                ),
+                            const SizedBox(width: 12),
+                            if (_outsideUser?.totalPoint != null)
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${_outsideUser!.totalPoint} điểm',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.amber.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        if (!isMySelf && token != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final userId = widget.userId;
+                                      try {
+                                        final users = await FollowService()
+                                            .fetchFollowing(
+                                              context: context,
+                                              userId: userId,
+                                            );
+                                        if (context.mounted) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (_) => FollowListScreen(
+                                                    title: 'Đang theo dõi',
+                                                    users: users,
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print('Lỗi fetch following: $e');
+                                      }
+                                    },
+                                    child: Text(
+                                      'Đang theo dõi: ${_outsideUser?.followCount ?? 0}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade700,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final userId = widget.userId;
+                                      try {
+                                        final users = await FollowService()
+                                            .fetchFollowers(
+                                              context: context,
+                                              userId: userId,
+                                            );
+                                        if (context.mounted) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (_) => FollowListScreen(
+                                                    title: 'Người theo dõi',
+                                                    users: users,
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print('Lỗi fetch followers: $e');
+                                      }
+                                    },
+                                    child: Text(
+                                      'Người theo dõi: ${_outsideUser?.followerCount ?? 0}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade700,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              FollowButton(
+                                targetUserId: widget.userId,
+                                token: token,
+                                isFollowingInitial:
+                                    _outsideUser?.yourFollow ?? false,
                               ),
                             ],
                           ),
-                        ],
-                        if (_outsideUser?.totalPoint != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.star,
-                                size: 16,
-                                color: Colors.amber,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${_outsideUser!.totalPoint} điểm',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.amber.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -328,6 +425,7 @@ class _OutsideUserPersonalState extends State<OutsideUserPersonal> {
                 });
               },
               pagination: _pagination,
+              videoPagination: _videoPagination,
               posts: _posts,
             ),
           ),
@@ -414,8 +512,9 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final OutsideUserTab currentTab;
   final VoidCallback onTapPosts, onTapVideos, onTapFarms;
-  final Pagination? pagination;
-  final List<PostModel> posts;
+  final post.Pagination? pagination;
+  final List<post.PostModel> posts;
+  final video.Pagination? videoPagination;
 
   _SliverTabDelegate({
     required this.height,
@@ -425,6 +524,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
     required this.onTapFarms,
     required this.pagination,
     required this.posts,
+    required this.videoPagination,
   });
 
   @override
@@ -440,6 +540,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final primary = Theme.of(context).colorScheme.primary;
     final totalPosts = pagination?.total ?? posts.length;
+    final totalVideos = videoPagination?.total ?? 0;
 
     Widget buildTab(String label, bool isActive, VoidCallback onTap) {
       return Expanded(
@@ -473,7 +574,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
       child: Row(
         children: [
           buildTab(
-            'Bài viết: $totalPosts',
+            'Bài viết($totalPosts)',
             currentTab == OutsideUserTab.posts,
             onTapPosts,
           ),
@@ -492,6 +593,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _SliverTabDelegate old) {
     return old.currentTab != currentTab ||
         old.pagination != pagination ||
+        old.videoPagination != videoPagination ||
         old.posts.length != posts.length;
   }
 }

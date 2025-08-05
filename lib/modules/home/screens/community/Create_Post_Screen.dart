@@ -1,3 +1,5 @@
+import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
+import 'package:farmrole/modules/auth/state/Chat_Notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +21,12 @@ class _CreatePostScreenState extends State<CreatePostScreen>
   @override
   void initState() {
     super.initState();
+    final userId = context.read<UserProvider>().user!.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chatNotifier = Provider.of<ChatNotifier>(context, listen: false);
+      ChatSocketService().setNotifier(chatNotifier);
+      chatNotifier.fetchTotalUnread(userId);
+    });
     _tabController = TabController(length: 2, vsync: this)
       ..addListener(_handleTabChange);
   }
@@ -105,16 +113,48 @@ class _CreatePostScreenState extends State<CreatePostScreen>
               color: Colors.white,
             ),
           ),
-          IconButton(
-            onPressed: () {
-              context.push('/chat');
+          Consumer<ChatNotifier>(
+            builder: (context, notifier, _) {
+              print("🎯 Widget rebuild với unread = ${notifier.totalUnread}");
+              return Stack(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      context.push('/chat');
+                    },
+                    icon: Image.asset(
+                      'lib/assets/icon2/chat.png',
+                      width: 34,
+                      height: 34,
+                    ),
+                  ),
+                  if (notifier.totalUnread > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Text(
+                          '${notifier.totalUnread}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             },
-            icon: Image.asset(
-              'lib/assets/icon2/chat.png',
-              width: 34,
-              height: 34,
-              color: Colors.white,
-            ),
           ),
         ],
 

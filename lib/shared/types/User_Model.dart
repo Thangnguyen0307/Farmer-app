@@ -13,6 +13,9 @@ class UserModel {
   final List<FarmModel> farms;
   final int? totalPoint;
   final String? rank;
+  final int? followerCount;
+  final int? followCount;
+  final bool? yourFollow;
 
   UserModel({
     required this.id,
@@ -27,6 +30,9 @@ class UserModel {
     this.farms = const [],
     this.totalPoint,
     this.rank,
+    this.followerCount,
+    this.followCount,
+    this.yourFollow,
   });
 
   UserModel copyWith({
@@ -42,6 +48,9 @@ class UserModel {
     List<FarmModel>? farms,
     int? totalPoint,
     String? rank,
+    int? followerCount,
+    int? followCount,
+    bool? yourFollow,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -56,6 +65,9 @@ class UserModel {
       farms: farms ?? this.farms,
       totalPoint: totalPoint ?? this.totalPoint,
       rank: rank ?? this.rank,
+      followerCount: followerCount ?? this.followerCount,
+      followCount: followCount ?? this.followCount,
+      yourFollow: yourFollow ?? this.yourFollow,
     );
   }
 
@@ -79,6 +91,9 @@ class UserModel {
       farms: (farmsJson as List).map((e) => FarmModel.fromJson(e)).toList(),
       totalPoint: data['totalPoint'] ?? 0,
       rank: data['rank'] ?? '',
+      followerCount: data['followerCount'] ?? 0,
+      followCount: data['followCount'] ?? 0,
+      yourFollow: data['yourFollow'] as bool?,
     );
   }
 

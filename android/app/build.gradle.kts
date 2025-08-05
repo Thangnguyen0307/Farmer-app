@@ -30,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId = "com.amazingtech.farmtalk"
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

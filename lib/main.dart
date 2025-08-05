@@ -7,6 +7,7 @@ import 'package:farmrole/env/env.dart';
 import 'package:farmrole/modules/auth/services/Auth_Service.dart';
 import 'package:farmrole/modules/auth/services/Chat_Socket_Service.dart';
 import 'package:farmrole/modules/auth/state/Address_Provider.dart';
+import 'package:farmrole/modules/auth/state/Chat_Notifier.dart';
 import 'package:farmrole/modules/auth/state/Farm_Provider.dart';
 import 'package:farmrole/modules/auth/state/Upload_Manager.dart';
 import 'package:farmrole/modules/auth/state/User_Provider.dart';
@@ -17,6 +18,7 @@ import 'package:farmrole/shared/types/User_Model.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,6 +28,7 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -44,7 +47,7 @@ void main() async {
     initialUser = UserModel.fromJson(userMap);
   }
 
-  Environment.setProd();
+  Environment.setDev();
   await Firebase.initializeApp();
 
   runApp(
@@ -57,6 +60,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => VideoProvider()),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
         ChangeNotifierProvider(create: (_) => UploadManager()),
+        ChangeNotifierProvider(create: (_) => ChatNotifier()),
       ],
       child: const MyApp(),
     ),
@@ -77,6 +81,14 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        final chatNotifier = Provider.of<ChatNotifier>(context, listen: false);
+        ChatSocketService().setNotifier(chatNotifier);
+      }
+    });
 
     // Lắng nghe trạng thái online/offline toàn app
     _statusSub = ChatSocketService().onlineStatus.listen((data) {
